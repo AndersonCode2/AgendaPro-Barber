@@ -45,7 +45,6 @@ export default function PaginaCliente() {
     fetch(`${API_URL}/public/servicos/${id_profissional}`).then(res => res.json()).then(data => setServicos(data)).catch(err => console.error(err));
   }, [id_profissional]);
 
-  // 🌟 O Linter fica feliz: Removemos o setState daqui e passamos pro botão de clique
   useEffect(() => {
     if (!id_profissional || !dataEscolhida) return;
     fetch(`${API_URL}/public/horarios-ocupados/${id_profissional}?data=${encodeURIComponent(dataEscolhida)}`)
@@ -107,7 +106,7 @@ export default function PaginaCliente() {
           <p className="text-[10px] tracking-[0.2em] text-[#A8A8A8] mt-1 uppercase">Experiência Premium</p>
         </header>
 
-        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-28">
+        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-28 relative">
           
           {etapa === 1 && (
             <div className="space-y-10 animate-slide-up mt-8">
@@ -122,9 +121,10 @@ export default function PaginaCliente() {
           )}
 
           {etapa === 2 && (
-            <div className="space-y-6 animate-slide-up mt-4">
+            <div className="space-y-6 animate-slide-up mt-4 h-full relative">
               <h2 className="text-3xl font-normal font-['Playfair_Display'] text-center text-white mb-8 leading-snug">Olá, <span className="text-[#D4AF37] italic">{nome.split(' ')[0]}</span>.<br/>Quais serviços deseja hoje?</h2>
               <p className="text-center text-xs text-[#A8A8A8] uppercase tracking-widest mb-4">Você pode selecionar mais de um</p>
+              
               <div className="space-y-4">
                 {servicos.length === 0 ? <p className="text-[#A8A8A8] text-center text-sm py-4">Nenhum serviço cadastrado.</p> : servicos.map((servico) => {
                   const isUltimo = ultimoServico && ultimoServico.includes(servico.nome);
@@ -139,15 +139,22 @@ export default function PaginaCliente() {
                     </button>
                   );
                 })}
+                
+                {/* 🌟 ESPAÇADOR ADICIONADO AQUI PARA EMPURRAR O CONTEÚDO PARA CIMA */}
+                <div className="w-full h-32 opacity-0"></div>
+
               </div>
-              <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20">
-                <div className="w-full max-w-md"><button onClick={() => setEtapa(3)} disabled={servicosEscolhidos.length === 0} className={`w-full p-5 flex items-center justify-between rounded-xl transition-all duration-500 shadow-2xl ${servicosEscolhidos.length > 0 ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.3)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-[#6F6F6F] cursor-not-allowed opacity-90'}`}><div className="flex flex-col text-left"><span className="text-[10px] uppercase tracking-widest font-bold opacity-80">Total</span><span className="font-['Playfair_Display'] text-xl">R$ {valorTotal.toFixed(2).replace('.', ',')}</span></div><div className="flex items-center gap-2"><span className="font-medium tracking-widest uppercase text-sm">Agendar</span> <ChevronRight size={20} /></div></button></div>
+
+              <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20 pointer-events-none">
+                <div className="w-full max-w-md pointer-events-auto">
+                   <button onClick={() => setEtapa(3)} disabled={servicosEscolhidos.length === 0} className={`w-full p-5 flex items-center justify-between rounded-xl transition-all duration-500 shadow-2xl ${servicosEscolhidos.length > 0 ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.3)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-[#6F6F6F] cursor-not-allowed opacity-90'}`}><div className="flex flex-col text-left"><span className="text-[10px] uppercase tracking-widest font-bold opacity-80">Total</span><span className="font-['Playfair_Display'] text-xl">R$ {valorTotal.toFixed(2).replace('.', ',')}</span></div><div className="flex items-center gap-2"><span className="font-medium tracking-widest uppercase text-sm">Agendar</span> <ChevronRight size={20} /></div></button>
+                </div>
               </div>
             </div>
           )}
 
           {etapa === 3 && (
-            <div className="space-y-6 animate-slide-up mt-4">
+            <div className="space-y-6 animate-slide-up mt-4 h-full relative">
               <div className="text-center mb-10">
                 <h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">Escolha data e horário</h2>
                 <p className="text-[#D4AF37] text-sm mt-2 font-light tracking-wide px-4 leading-relaxed">{nomesServicosCombinados}</p>
@@ -159,7 +166,7 @@ export default function PaginaCliente() {
                         key={dia.valor} 
                         onClick={() => { 
                            setDataEscolhida(dia.valor); 
-                           setHorarioEscolhido(''); // 🌟 Ação correta aqui!
+                           setHorarioEscolhido(''); 
                         }} 
                         className={`shrink-0 px-4 py-2 rounded-lg text-sm border transition-all whitespace-nowrap ${dataEscolhida === dia.valor ? 'bg-[#D4AF37] border-[#D4AF37] text-[#0D0D0D] font-medium' : 'bg-[#0D0D0D] border-[#2A2A2A] text-[#A8A8A8] hover:border-[#6F6F6F]'}`}
                      >
@@ -187,7 +194,15 @@ export default function PaginaCliente() {
                    })}
                  </div>
               </div>
-              <button onClick={finalizarAgendamento} disabled={!horarioEscolhido} className={`w-full p-5 flex items-center justify-center gap-3 rounded-xl transition-all ${horarioEscolhido ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.25)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={20} /> <span className="font-medium tracking-widest uppercase text-sm">Confirmar Reserva</span></button>
+              
+              {/* 🌟 ESPAÇADOR ADICIONADO AQUI TAMBÉM */}
+              <div className="w-full h-32 opacity-0"></div>
+
+              <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20 pointer-events-none">
+                 <div className="w-full max-w-md pointer-events-auto">
+                    <button onClick={finalizarAgendamento} disabled={!horarioEscolhido} className={`w-full p-5 flex items-center justify-center gap-3 rounded-xl transition-all shadow-2xl ${horarioEscolhido ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.25)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed opacity-90'}`}><CheckCircle2 size={20} /> <span className="font-medium tracking-widest uppercase text-sm">Confirmar Reserva</span></button>
+                 </div>
+              </div>
             </div>
           )}
         </main>
