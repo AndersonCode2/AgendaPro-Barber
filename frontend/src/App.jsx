@@ -47,6 +47,7 @@ function TelaAuth({ onLogin }) {
     } catch (err) { setErro(err.message); }
   };
 
+  // 🚀 O SIMULADOR DO GOOGLE ESTÁ AQUI! (Sem o alerta antigo)
   const handleGoogleClick = async () => {
     setErro('');
     const mockEmail = `cabeleireiro${Math.floor(Math.random() * 1000)}@gmail.com`;
