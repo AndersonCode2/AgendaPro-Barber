@@ -1,0 +1,46 @@
+/* frontend/src/index.css */
+
+/* 1. Fontes Premium (Playfair Display para títulos, Inter para textos) */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* 2. Importação do Tailwind (Versão 4.0+) */
+@import "tailwindcss";
+
+/* 3. Fundo base do aplicativo (Evita piscar branco ao carregar) */
+body {
+  background-color: #0D0D0D;
+  color: #FFFFFF;
+  -webkit-font-smoothing: antialiased; /* Deixa as fontes mais nítidas e elegantes */
+}
+
+/* 4. Animações Suaves e Utilitários Premium */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 24px);
+  }
+  
+  .animate-slide-up {
+    /* Curva de animação (cubic-bezier) típica de apps de alto padrão como Apple/Bancos premium */
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(100%); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
