@@ -4,7 +4,8 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
-const API_URL = 'http://localhost:3333/api';
+// 🚀 CONEXÃO COM O SERVIDOR NA NUVEM!
+const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
 // ==========================================
 // 🔐 TELA DE AUTENTICAÇÃO
@@ -173,7 +174,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [vendaNome, setVendaNome] = useState('');
   const [vendaServico, setVendaServico] = useState(null);
 
-  const linkCliente = `http://localhost:5173/agendar/${usuario.id}`;
+  const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const linkCliente = `${linkBase}/agendar/${usuario.id}`;
+  
   const mensagemPromo = encodeURIComponent(`✨ Exclusividade e sofisticação. Agende sua experiência premium com ${usuario.nome}: ${linkCliente}`);
 
   const headersAPI = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };

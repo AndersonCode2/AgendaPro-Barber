@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronRight, Clock, Calendar as CalendarIcon, CheckCircle2, ArrowLeft, Phone, Gift, Star } from 'lucide-react';
 
-const API_URL = 'http://localhost:3333/api';
+// 🚀 AQUI TAMBÉM VAI A CONEXÃO COM O SEU SERVIDOR NA NUVEM!
+const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
 const gerarDiasDisponiveis = () => {
   const dias = [];
@@ -176,7 +177,6 @@ export default function PaginaCliente() {
                 })}
               </div>
 
-              {/* BARRA FIXA EMBAIXO COM O TOTAL E BOTÃO - CORRIGIDA */}
               <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20">
                 <div className="w-full max-w-md">
                    <button 
