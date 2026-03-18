@@ -1,15 +1,11 @@
 // frontend/src/App.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2 } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
-// 🚀 CONEXÃO COM O SERVIDOR NA NUVEM!
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
-// ==========================================
-// 🔐 TELA DE AUTENTICAÇÃO
-// ==========================================
 function TelaAuth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState('');
@@ -17,7 +13,7 @@ function TelaAuth({ onLogin }) {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
-  
+  const [carregandoGoogle, setCarregandoGoogle] = useState(false); // 🌟 Estado de Carregamento
   const [fluxoGoogle, setFluxoGoogle] = useState(null); 
 
   const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -26,7 +22,6 @@ function TelaAuth({ onLogin }) {
   const handleSubmitTradicional = async (e) => {
     e.preventDefault();
     setErro('');
-
     if (!validarEmail(email)) return setErro('Por favor, insira um e-mail válido.');
     if (senha.length < 6) return setErro('A senha deve ter no mínimo 6 caracteres de segurança.');
     if (!isLogin && !validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido com DDD.');
@@ -35,42 +30,32 @@ function TelaAuth({ onLogin }) {
     const body = isLogin ? { email, senha } : { nome, email, senha, telefone };
 
     try {
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na autenticação');
-      
       onLogin(data.token, data.usuario);
     } catch (err) { setErro(err.message); }
   };
 
-  // 🚀 O SIMULADOR DO GOOGLE ESTÁ AQUI! (Sem o alerta antigo)
   const handleGoogleClick = async () => {
     setErro('');
+    setCarregandoGoogle(true); // 🌟 Começa a girar
     const mockEmail = `cabeleireiro${Math.floor(Math.random() * 1000)}@gmail.com`;
     const mockNome = "Salão " + Math.floor(Math.random() * 100);
 
     try {
-      const res = await fetch(`${API_URL}/google/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: mockEmail, nome: mockNome })
-      });
+      const res = await fetch(`${API_URL}/google/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mockEmail, nome: mockNome }) });
       const data = await res.json();
-      
       if (data.action === 'login') {
         onLogin(data.token, data.usuario);
       } else if (data.action === 'register_needed') {
         setFluxoGoogle({ email: data.email, nome: data.nome });
-        setNome(data.nome);
-        setEmail(data.email);
+        setNome(data.nome); setEmail(data.email);
       }
     } catch (err) { 
-      console.error(err); 
-      setErro('Erro ao conectar com Google.'); 
+      console.error(err); setErro('Erro ao conectar. O servidor pode estar dormindo, tente novamente.'); 
+    } finally {
+      setCarregandoGoogle(false); // 🌟 Para de girar
     }
   };
 
@@ -80,14 +65,9 @@ function TelaAuth({ onLogin }) {
     if (!validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido com DDD.');
 
     try {
-      const res = await fetch(`${API_URL}/google/cadastro`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email: fluxoGoogle.email, telefone })
-      });
+      const res = await fetch(`${API_URL}/google/cadastro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, email: fluxoGoogle.email, telefone }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao finalizar cadastro');
-      
       onLogin(data.token, data.usuario);
     } catch (err) { setErro(err.message); }
   };
@@ -95,32 +75,18 @@ function TelaAuth({ onLogin }) {
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex flex-col justify-center items-center p-6 font-['Inter']">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-normal font-['Playfair_Display'] text-[#D4AF37] tracking-widest">AURUM</h1>
-        </div>
+        <div className="text-center mb-10"><h1 className="text-5xl font-normal font-['Playfair_Display'] text-[#D4AF37] tracking-widest">AURUM</h1></div>
 
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
-          
           {fluxoGoogle ? (
              <div className="animate-slide-up">
                 <h2 className="text-2xl text-[#D4AF37] font-['Playfair_Display'] mb-2 text-center">Falta pouco!</h2>
-                <p className="text-xs text-[#A8A8A8] text-center mb-6 font-light leading-relaxed">
-                  Para o sistema de agendamento funcionar, precisamos do seu número de WhatsApp.
-                </p>
+                <p className="text-xs text-[#A8A8A8] text-center mb-6 font-light leading-relaxed">Para o sistema funcionar, precisamos do seu WhatsApp.</p>
                 {erro && <div className="bg-red-900/20 border border-red-900/50 text-red-200 p-3 rounded-lg text-sm mb-4 text-center">{erro}</div>}
-                
                 <form onSubmit={handleCompletarGoogle} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome do Salão</label>
-                    <input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">WhatsApp (Com DDD)</label>
-                    <input type="tel" required placeholder="Ex: 11999999999" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none text-sm" />
-                  </div>
-                  <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-4 hover:bg-[#E6C76B] transition-colors">
-                    Finalizar Cadastro
-                  </button>
+                  <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome do Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none text-sm" /></div>
+                  <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required placeholder="Ex: 11999999999" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none text-sm" /></div>
+                  <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-4 hover:bg-[#E6C76B] transition-colors">Finalizar Cadastro</button>
                 </form>
              </div>
           ) : (
@@ -141,9 +107,10 @@ function TelaAuth({ onLogin }) {
               
               <div className="relative flex items-center py-6"><div className="grow border-t border-[#2A2A2A]"></div><span className="shrink-0 mx-4 text-[#6F6F6F] text-xs font-light">OU</span><div className="grow border-t border-[#2A2A2A]"></div></div>
               
-              <button type="button" onClick={handleGoogleClick} className="w-full bg-white text-black p-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors shadow-md">
-                <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                Entrar com Google
+              {/* 🌟 BOTÃO DO GOOGLE COM AVISO DE CARREGANDO */}
+              <button type="button" onClick={handleGoogleClick} disabled={carregandoGoogle} className={`w-full bg-white text-black p-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-3 transition-colors shadow-md ${carregandoGoogle ? 'opacity-80 cursor-wait' : 'hover:bg-gray-200'}`}>
+                {carregandoGoogle ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>}
+                {carregandoGoogle ? 'Acordando servidor...' : 'Entrar com Google'}
               </button>
               
               <div className="mt-8 text-center"><button onClick={() => { setIsLogin(!isLogin); setErro(''); setSenha(''); }} className="text-[#A8A8A8] text-sm hover:text-white transition-colors">{isLogin ? 'Não tem uma conta? Crie aqui.' : 'Já tem uma conta? Faça login.'}</button></div>
@@ -155,9 +122,6 @@ function TelaAuth({ onLogin }) {
   );
 }
 
-// ==========================================
-// 💎 PAINEL PROTEGIDO (PROFISSIONAL E CEO)
-// ==========================================
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
@@ -168,7 +132,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [servicos, setServicos] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [historicoCaixa, setHistoricoCaixa] = useState([]);
-
   const [dadosCeo, setDadosCeo] = useState({ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] });
 
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
@@ -177,7 +140,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   const linkCliente = `${linkBase}/agendar/${usuario.id}`;
-  
   const mensagemPromo = encodeURIComponent(`✨ Exclusividade e sofisticação. Agende sua experiência premium com ${usuario.nome}: ${linkCliente}`);
 
   const headersAPI = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -265,17 +227,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
       <header className="bg-[#1A1A1A] p-5 shadow-[0_1px_0_rgba(42,42,42,1)] flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold font-['Playfair_Display'] tracking-tight text-[#D4AF37]">AURUM</h1>
-          <p className="text-[10px] tracking-widest text-[#A8A8A8] mt-1 uppercase">
-            {usuario.is_ceo ? '⚡ PAINEL MASTER' : `OLÁ, ${usuario.nome.split(' ')[0]}`}
-          </p>
+          <p className="text-[10px] tracking-widest text-[#A8A8A8] mt-1 uppercase">{usuario.is_ceo ? '⚡ PAINEL MASTER' : `OLÁ, ${usuario.nome.split(' ')[0]}`}</p>
         </div>
-        <button onClick={onLogout} className="w-9 h-9 border border-[#2A2A2A] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center" title="Sair">
-          <LogOut size={16} />
-        </button>
+        <button onClick={onLogout} className="w-9 h-9 border border-[#2A2A2A] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center" title="Sair"><LogOut size={16} /></button>
       </header>
 
       <main className="flex-1 p-6 pb-28 overflow-y-auto space-y-8">
-        
         {telaAtiva === 'home' && (
           <div className="space-y-8 animate-fade-in">
             <div className="grid grid-cols-2 gap-5">
@@ -367,14 +324,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
           </div>
         )}
 
-        {/* --- TELA SECRETA DO CEO --- */}
         {telaAtiva === 'ceo' && usuario.is_ceo && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-normal font-['Playfair_Display'] text-[#D4AF37]">Painel Oculto</h2>
               <p className="text-[#A8A8A8] text-sm mt-2 font-light">Visão global da plataforma AURUM</p>
             </div>
-
             <div className="grid grid-cols-2 gap-5">
               <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#D4AF37]/30 shadow-[0_0_20px_rgba(212,175,55,0.1)]">
                 <span className="text-[#A8A8A8] text-sm font-light uppercase tracking-wider">Empresas Ativas</span>
@@ -385,26 +340,16 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 <span className="text-3xl font-normal font-['Playfair_Display'] text-[#E6C76B] block mt-3">R$ {dadosCeo.faturamentoGlobal.toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
-
             <div className="mt-8">
               <h3 className="text-xl font-normal font-['Playfair_Display'] text-white mb-4">Últimos Assinantes</h3>
               <div className="space-y-3">
-                {dadosCeo.empresas.length === 0 ? (
-                  <p className="text-[#6F6F6F] font-light">Nenhuma empresa cadastrada ainda.</p>
-                ) : (
-                  dadosCeo.empresas.map((empresa) => (
+                {dadosCeo.empresas.length === 0 ? <p className="text-[#6F6F6F] font-light">Nenhuma empresa cadastrada ainda.</p> : dadosCeo.empresas.map((empresa) => (
                     <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-4 rounded-xl flex justify-between items-center">
-                      <div>
-                        <p className="text-white font-medium">{empresa.nome}</p>
-                        <p className="text-[#A8A8A8] text-xs mt-1">{empresa.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-[#6F6F6F] font-light block">ID: {empresa.id}</span>
-                        <span className="text-xs text-[#D4AF37] font-medium block mt-1">{empresa.telefone}</span>
-                      </div>
+                      <div><p className="text-white font-medium">{empresa.nome}</p><p className="text-[#A8A8A8] text-xs mt-1">{empresa.email}</p></div>
+                      <div className="text-right"><span className="text-xs text-[#6F6F6F] font-light block">ID: {empresa.id}</span><span className="text-xs text-[#D4AF37] font-medium block mt-1">{empresa.telefone}</span></div>
                     </div>
                   ))
-                )}
+                }
               </div>
             </div>
           </div>
@@ -416,9 +361,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
         <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
         <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
-        {usuario.is_ceo && (
-          <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />
-        )}
+        {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
       </nav>
 
       {modalAberto && (
@@ -454,26 +397,11 @@ function NavButton({ icone, texto, ativo, onClick, isDestaque }) {
   );
 }
 
-// ==========================================
-// 🚀 ROTEADOR
-// ==========================================
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('aurum_token'));
   const [usuario, setUsuario] = useState(JSON.parse(localStorage.getItem('aurum_usuario')));
-
-  const handleLogin = (newToken, user) => {
-    localStorage.setItem('aurum_token', newToken);
-    localStorage.setItem('aurum_usuario', JSON.stringify(user));
-    setToken(newToken);
-    setUsuario(user);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('aurum_token');
-    localStorage.removeItem('aurum_usuario');
-    setToken(null);
-    setUsuario(null);
-  };
+  const handleLogin = (newToken, user) => { localStorage.setItem('aurum_token', newToken); localStorage.setItem('aurum_usuario', JSON.stringify(user)); setToken(newToken); setUsuario(user); };
+  const handleLogout = () => { localStorage.removeItem('aurum_token'); localStorage.removeItem('aurum_usuario'); setToken(null); setUsuario(null); };
 
   return (
     <BrowserRouter>
