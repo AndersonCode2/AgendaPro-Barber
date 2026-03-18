@@ -36,10 +36,11 @@ const verificarCEO = (req, res, next) => {
   next();
 };
 
+// 🌟 REGISTRO SEM LIMITE DE SENHA OBRIGATÓRIO
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: 'E-mail inválido.' });
-  if (!senha || senha.length < 6) return res.status(400).json({ error: 'Senha curta.' });
+  if (!senha) return res.status(400).json({ error: 'A senha é obrigatória.' });
   if (!telefone || telefone.length < 10) return res.status(400).json({ error: 'Telefone inválido.' });
 
   try {
@@ -99,16 +100,51 @@ app.post('/api/google/cadastro', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro Google Cad.' }); }
 });
 
-// ROTAS DO PAINEL
+// ==========================================
+// 🛡️ ROTAS DO CEO (CENTRAL DE COMANDO)
+// ==========================================
 app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => {
   try {
     const empresasQuery = await pool.query('SELECT COUNT(id) as total FROM profissionais WHERE is_ceo = FALSE');
     const faturamentoQuery = await pool.query('SELECT COALESCE(SUM(valor), 0) as total_global FROM vendas');
-    const listaEmpresas = await pool.query('SELECT id, nome, email, telefone, data_cadastro FROM profissionais WHERE is_ceo = FALSE ORDER BY data_cadastro DESC LIMIT 10');
-    res.json({ totalEmpresas: parseInt(empresasQuery.rows[0].total), faturamentoGlobal: parseFloat(faturamentoQuery.rows[0].total_global), empresas: listaEmpresas.rows });
+    
+    // 🌟 PUXA AS EMPRESAS E SOMA O FATURAMENTO DE CADA UMA
+    const listaEmpresas = await pool.query(`
+      SELECT p.id, p.nome, p.email, p.telefone, p.data_cadastro, 
+             COALESCE(SUM(v.valor), 0) as faturamento_total
+      FROM profissionais p
+      LEFT JOIN vendas v ON p.id = v.profissional_id
+      WHERE p.is_ceo = FALSE
+      GROUP BY p.id
+      ORDER BY p.data_cadastro DESC
+    `);
+
+    res.json({ 
+      totalEmpresas: parseInt(empresasQuery.rows[0].total), 
+      faturamentoGlobal: parseFloat(faturamentoQuery.rows[0].total_global), 
+      empresas: listaEmpresas.rows 
+    });
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); }
 });
 
+// 🌟 ROTA PARA EXCLUIR USUÁRIO (COM SEGURANÇA ABSOLUTA PARA O CEO)
+app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => {
+  try {
+    const idParaExcluir = req.params.id;
+    
+    // Verifica se o usuário que está tentando excluir é um CEO
+    const checkUser = await pool.query('SELECT is_ceo FROM profissionais WHERE id = $1', [idParaExcluir]);
+    if (checkUser.rows.length > 0 && checkUser.rows[0].is_ceo) {
+      return res.status(403).json({ error: 'Acesso negado: O usuário CEO possui segurança absoluta e não pode ser excluído.' });
+    }
+
+    // Se não for CEO, exclui a empresa (O banco apagará vendas e serviços automaticamente devido ao ON DELETE CASCADE)
+    await pool.query('DELETE FROM profissionais WHERE id = $1', [idParaExcluir]);
+    res.json({ message: 'Usuário excluído com sucesso.' });
+  } catch (error) { res.status(500).json({ error: 'Erro ao excluir usuário.' }); }
+});
+
+// ROTAS DO PAINEL PROFISSIONAL
 app.get('/api/dashboard', verificarToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]);
@@ -195,15 +231,10 @@ app.get('/api/public/historico/:id_profissional/:whatsapp', async (req, res) => 
   } catch (error) { res.status(500).json({ error: 'Erro hist' }); }
 });
 
-// 🌟 NOVA ROTA: BUSCAR HORÁRIOS JÁ OCUPADOS NAQUELE DIA
 app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
-  const { data } = req.query; // Recebe a data pela URL
+  const { data } = req.query;
   try {
-    const result = await pool.query(
-      "SELECT horario FROM agendamentos WHERE profissional_id = $1 AND data_reserva = $2 AND status != 'cancelado'", 
-      [req.params.id_profissional, data]
-    );
-    // Retorna apenas uma lista com os horários ["09:00", "14:00"]
+    const result = await pool.query("SELECT horario FROM agendamentos WHERE profissional_id = $1 AND data_reserva = $2 AND status != 'cancelado'", [req.params.id_profissional, data]);
     res.json(result.rows.map(r => r.horario));
   } catch (error) { res.status(500).json({ error: 'Erro horarios ocupados' }); }
 });

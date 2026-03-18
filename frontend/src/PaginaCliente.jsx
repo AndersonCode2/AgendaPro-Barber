@@ -106,7 +106,7 @@ export default function PaginaCliente() {
           <p className="text-[10px] tracking-[0.2em] text-[#A8A8A8] mt-1 uppercase">Experiência Premium</p>
         </header>
 
-        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-28 relative">
+        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-36 relative">
           
           {etapa === 1 && (
             <div className="space-y-10 animate-slide-up mt-8">
@@ -140,13 +140,12 @@ export default function PaginaCliente() {
                   );
                 })}
                 
-                {/* 🌟 ESPAÇADOR ADICIONADO AQUI PARA EMPURRAR O CONTEÚDO PARA CIMA */}
                 <div className="w-full h-32 opacity-0"></div>
 
               </div>
 
-              <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20 pointer-events-none">
-                <div className="w-full max-w-md pointer-events-auto">
+              <div className="fixed bottom-0 left-0 w-full flex justify-center p-6 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D]/90 to-transparent z-20 pointer-events-none">
+                <div className="w-full max-w-md pointer-events-auto relative">
                    <button onClick={() => setEtapa(3)} disabled={servicosEscolhidos.length === 0} className={`w-full p-5 flex items-center justify-between rounded-xl transition-all duration-500 shadow-2xl ${servicosEscolhidos.length > 0 ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.3)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] border border-[#2A2A2A] text-[#6F6F6F] cursor-not-allowed opacity-90'}`}><div className="flex flex-col text-left"><span className="text-[10px] uppercase tracking-widest font-bold opacity-80">Total</span><span className="font-['Playfair_Display'] text-xl">R$ {valorTotal.toFixed(2).replace('.', ',')}</span></div><div className="flex items-center gap-2"><span className="font-medium tracking-widest uppercase text-sm">Agendar</span> <ChevronRight size={20} /></div></button>
                 </div>
               </div>
@@ -195,10 +194,9 @@ export default function PaginaCliente() {
                  </div>
               </div>
               
-              {/* 🌟 ESPAÇADOR ADICIONADO AQUI TAMBÉM */}
               <div className="w-full h-32 opacity-0"></div>
 
-              <div className="fixed bottom-0 left-0 w-full flex justify-center p-4 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D] to-transparent z-20 pointer-events-none">
+              <div className="fixed bottom-0 left-0 w-full flex justify-center p-6 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D]/90 to-transparent z-20 pointer-events-none">
                  <div className="w-full max-w-md pointer-events-auto">
                     <button onClick={finalizarAgendamento} disabled={!horarioEscolhido} className={`w-full p-5 flex items-center justify-center gap-3 rounded-xl transition-all shadow-2xl ${horarioEscolhido ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.25)] hover:bg-[#E6C76B]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed opacity-90'}`}><CheckCircle2 size={20} /> <span className="font-medium tracking-widest uppercase text-sm">Confirmar Reserva</span></button>
                  </div>

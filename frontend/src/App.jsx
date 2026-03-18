@@ -1,10 +1,9 @@
 // frontend/src/App.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2 } from 'lucide-react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
-// 🚀 CONEXÃO COM O SERVIDOR NA NUVEM
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
 // ==========================================
@@ -27,7 +26,7 @@ function TelaAuth({ onLogin }) {
     e.preventDefault();
     setErro('');
     if (!validarEmail(email)) return setErro('Por favor, insira um e-mail válido.');
-    if (senha.length < 6) return setErro('A senha deve ter no mínimo 6 caracteres de segurança.');
+    if (!senha) return setErro('A senha é obrigatória.');
     if (!isLogin && !validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido com DDD.');
 
     const endpoint = isLogin ? '/login' : '/cadastro';
@@ -111,7 +110,7 @@ function TelaAuth({ onLogin }) {
                   </>
                 )}
                 <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
+                <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Senha Segura</label><input type="password" required placeholder="Sua senha secreta" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
                 <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm hover:bg-[#E6C76B] transition-colors mt-2">{isLogin ? 'Entrar' : 'Cadastrar'}</button>
               </form>
               
@@ -149,6 +148,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
   const [vendaNome, setVendaNome] = useState('');
   const [vendaServico, setVendaServico] = useState(null);
+
+  // 🌟 ESTADOS PARA A CAIXA DE SUPORTE
+  const [modalSuporte, setModalSuporte] = useState(false);
+  const [textoSuporte, setTextoSuporte] = useState('');
 
   const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   const linkCliente = `${linkBase}/agendar/${usuario.id}`;
@@ -227,30 +230,42 @@ function PainelProfissional({ token, usuario, onLogout }) {
     } catch (error) { console.error(error); }
   };
 
-  // 🌟 O NOVO PÓS-VENDA AUTOMÁTICO VIA WHATSAPP (A CEREJA DO BOLO)
   const concluirAtendimento = async (agendamento) => {
     try {
-      // 1. Atualiza o banco (Sobe o valor para o caixa)
       await fetch(`${API_URL}/agendamentos/${agendamento.id}/concluir`, { method: 'POST', headers: headersAPI });
       carregarAgenda(); carregarDashboard(); carregarCaixa(); carregarDadosCeo();
 
-      // 2. Automação do WhatsApp para o cliente
       if (agendamento.cliente_whatsapp) {
-        const numeroCliente = agendamento.cliente_whatsapp.replace(/\D/g, ''); // Deixa só os números
+        const numeroCliente = agendamento.cliente_whatsapp.replace(/\D/g, '');
         const nomeCliente = agendamento.cliente_nome ? agendamento.cliente_nome.split(' ')[0] : 'Cliente';
         const nomeDoSalao = usuario.nome;
-
         const textoAgradecimento = `✨ Olá, ${nomeCliente}! Aqui é do ${nomeDoSalao}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
-        
-        // Abre o WhatsApp Web (ou o App do celular) com a mensagem pronta!
         window.open(`https://wa.me/55${numeroCliente}?text=${encodeURIComponent(textoAgradecimento)}`, '_blank');
       }
-
     } catch (error) { console.error("Erro ao concluir", error); }
   };
 
+  const excluirEmpresa = async (id, nomeEmpresa) => {
+    if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir permanentemente o salão "${nomeEmpresa}"?\nTodos os dados, serviços e faturamento deles serão apagados.`)) return;
+    try {
+      const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI });
+      if (res.ok) { alert("Salão removido com sucesso do sistema."); carregarDadosCeo(); } 
+      else { const erro = await res.json(); alert(erro.error || "Erro ao excluir."); }
+    } catch (error) { console.error(error); }
+  };
+
+  // 🌟 FUNÇÃO DE ENVIAR TICKET DE SUPORTE PARA O CEO
+  const enviarSuporteParaCEO = (e) => {
+    e.preventDefault();
+    const numeroDoCEO = '5573998055316'; // Seu número do WhatsApp
+    const texto = `💡 *Novo Ticket de Suporte/Sugestão*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`;
+    window.open(`https://wa.me/${numeroDoCEO}?text=${encodeURIComponent(texto)}`, '_blank');
+    setModalSuporte(false);
+    setTextoSuporte('');
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white">
+    <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative">
       <header className="bg-[#1A1A1A] p-5 shadow-[0_1px_0_rgba(42,42,42,1)] flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold font-['Playfair_Display'] tracking-tight text-[#D4AF37]">AURUM</h1>
@@ -259,7 +274,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <button onClick={onLogout} className="w-9 h-9 border border-[#2A2A2A] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center" title="Sair"><LogOut size={16} /></button>
       </header>
 
-      <main className="flex-1 p-6 pb-28 overflow-y-auto space-y-8">
+      <main className="flex-1 p-6 pb-36 overflow-y-auto space-y-8">
         {telaAtiva === 'home' && (
           <div className="space-y-8 animate-fade-in">
             <div className="grid grid-cols-2 gap-5">
@@ -294,7 +309,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
                       </div>
                       <span className="text-white font-['Playfair_Display'] text-lg">R$ {parseFloat(ag.valor).toFixed(2).replace('.', ',')}</span>
                     </div>
-                    {/* 🌟 Passando o agendamento completo para a nova função */}
                     <button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors"><CheckCircle2 size={18} /> Concluir Atendimento</button>
                   </div>
               ))}
@@ -355,29 +369,55 @@ function PainelProfissional({ token, usuario, onLogout }) {
         {telaAtiva === 'ceo' && usuario.is_ceo && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-normal font-['Playfair_Display'] text-[#D4AF37]">Painel Oculto</h2>
-              <p className="text-[#A8A8A8] text-sm mt-2 font-light">Visão global da plataforma AURUM</p>
+              <h2 className="text-3xl font-normal font-['Playfair_Display'] text-[#D4AF37]">Central de Comando</h2>
+              <p className="text-[#A8A8A8] text-sm mt-2 font-light">Controle absoluto sobre a plataforma AURUM</p>
             </div>
+            
             <div className="grid grid-cols-2 gap-5">
               <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#D4AF37]/30 shadow-[0_0_20px_rgba(212,175,55,0.1)]">
                 <span className="text-[#A8A8A8] text-sm font-light uppercase tracking-wider">Empresas Ativas</span>
                 <span className="text-4xl font-normal font-['Playfair_Display'] text-white block mt-3">{dadosCeo.totalEmpresas}</span>
               </div>
               <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#D4AF37]/30 shadow-[0_0_20px_rgba(212,175,55,0.1)]">
-                <span className="text-[#A8A8A8] text-sm font-light uppercase tracking-wider">Faturamento Global</span>
+                <span className="text-[#A8A8A8] text-sm font-light uppercase tracking-wider">Giro Global</span>
                 <span className="text-3xl font-normal font-['Playfair_Display'] text-[#E6C76B] block mt-3">R$ {dadosCeo.faturamentoGlobal.toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
-            <div className="mt-8">
-              <h3 className="text-xl font-normal font-['Playfair_Display'] text-white mb-4">Últimos Assinantes</h3>
-              <div className="space-y-3">
-                {dadosCeo.empresas.length === 0 ? <p className="text-[#6F6F6F] font-light">Nenhuma empresa cadastrada ainda.</p> : dadosCeo.empresas.map((empresa) => (
-                    <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-4 rounded-xl flex justify-between items-center">
-                      <div><p className="text-white font-medium">{empresa.nome}</p><p className="text-[#A8A8A8] text-xs mt-1">{empresa.email}</p></div>
-                      <div className="text-right"><span className="text-xs text-[#6F6F6F] font-light block">ID: {empresa.id}</span><span className="text-xs text-[#D4AF37] font-medium block mt-1">{empresa.telefone}</span></div>
+            
+            <div className="mt-10">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-normal font-['Playfair_Display'] text-white">Gestão de Assinantes</h3>
+              </div>
+              
+              <div className="space-y-4">
+                {dadosCeo.empresas.length === 0 ? (
+                  <p className="text-[#6F6F6F] font-light text-center py-6">Nenhuma empresa cadastrada ainda.</p>
+                ) : (
+                  dadosCeo.empresas.map((empresa) => (
+                    <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-xl flex justify-between items-center group hover:border-[#D4AF37]/30 transition-all">
+                      <div className="flex-1">
+                        <p className="text-white font-medium text-lg">{empresa.nome}</p>
+                        <p className="text-[#A8A8A8] text-xs mt-1 flex items-center gap-2">
+                          <span className="bg-[#2A2A2A] px-2 py-0.5 rounded text-[10px]">ID: {empresa.id}</span>
+                          {empresa.telefone}
+                        </p>
+                      </div>
+                      
+                      <div className="text-right mr-5">
+                        <span className="text-[10px] text-[#6F6F6F] font-light uppercase tracking-widest block">Faturamento</span>
+                        <span className="text-sm text-[#D4AF37] font-medium block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span>
+                      </div>
+
+                      <button 
+                        onClick={() => excluirEmpresa(empresa.id, empresa.nome)} 
+                        className="p-3 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-lg hover:text-red-500 hover:border-red-900/50 hover:bg-red-900/10 transition-all"
+                        title="Excluir Empresa"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                   ))
-                }
+                )}
               </div>
             </div>
           </div>
@@ -408,6 +448,47 @@ function PainelProfissional({ token, usuario, onLogout }) {
               </div>
               {vendaServico && (<div className="bg-[#0D0D0D] border border-[#D4AF37]/30 p-4 rounded-xl flex justify-between items-center"><span className="text-[#A8A8A8] font-light">Valor a receber:</span><span className="text-[#D4AF37] text-2xl">R$ {parseFloat(vendaServico.preco).toFixed(2).replace('.', ',')}</span></div>)}
               <button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-xl transition-all ${vendaServico ? 'bg-[#D4AF37] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-medium tracking-widest uppercase text-sm">Confirmar & Receber</span></button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 BOTÃO FLUTUANTE DE SUPORTE (APENAS PARA PROFISSIONAIS, NÃO PARA O CEO) */}
+      {!usuario.is_ceo && (
+        <button 
+          onClick={() => setModalSuporte(true)}
+          className="fixed bottom-24 right-4 bg-[#1A1A1A] text-[#D4AF37] border border-[#2A2A2A] p-3.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.6)] hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors z-40 group"
+          title="Precisa de ajuda do Suporte?"
+        >
+          <LifeBuoy size={22} />
+        </button>
+      )}
+
+      {/* 🌟 MODAL DA CAIXA DE SUPORTE */}
+      {modalSuporte && (
+        <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 animate-fade-in">
+          <div className="bg-[#1A1A1A] w-full max-w-sm rounded-3xl p-6 border border-[#2A2A2A] animate-slide-up relative shadow-[0_0_40px_rgba(212,175,55,0.1)]">
+            <button onClick={() => setModalSuporte(false)} className="absolute top-5 right-5 text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-1.5 rounded-full transition-colors"><X size={18}/></button>
+            
+            <div className="mb-6 mt-2">
+              <h2 className="text-2xl font-['Playfair_Display'] text-white">Central de Ajuda</h2>
+              <p className="text-xs text-[#D4AF37] mt-1 font-light tracking-wider uppercase">Suporte Técnico AURUM</p>
+            </div>
+
+            <p className="text-sm text-[#A8A8A8] mb-5 font-light leading-relaxed">Encontrou algum problema ou tem sugestões para melhorar o sistema? Envie um ticket direto para o desenvolvedor:</p>
+            
+            <form onSubmit={enviarSuporteParaCEO}>
+              <textarea
+                required
+                rows="4"
+                placeholder="Descreva sua solicitação..."
+                className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none resize-none text-sm mb-4 transition-colors"
+                value={textoSuporte}
+                onChange={(e) => setTextoSuporte(e.target.value)}
+              ></textarea>
+              <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm hover:bg-[#E6C76B] transition-colors flex items-center justify-center gap-2">
+                <LifeBuoy size={18} /> Abrir Ticket no WhatsApp
+              </button>
             </form>
           </div>
         </div>
