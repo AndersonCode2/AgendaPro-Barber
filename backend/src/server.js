@@ -141,16 +141,31 @@ app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => 
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); }
 });
 
+// 🌟 A NOVA EXCLUSÃO FORÇADA E ABSOLUTA DO CEO
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => {
   try {
     const idParaExcluir = req.params.id;
+    
+    // 1. Verifica se o usuário alvo é o CEO
     const checkUser = await pool.query('SELECT is_ceo FROM profissionais WHERE id = $1', [idParaExcluir]);
     if (checkUser.rows.length > 0 && checkUser.rows[0].is_ceo) {
       return res.status(403).json({ error: 'Acesso negado: O usuário CEO possui segurança absoluta e não pode ser excluído.' });
     }
+
+    // 2. Apaga forçadamente todas as dependências do salão (Serviços, Vendas, Clientes, Agendamentos)
+    await pool.query('DELETE FROM vendas WHERE profissional_id = $1', [idParaExcluir]);
+    await pool.query('DELETE FROM agendamentos WHERE profissional_id = $1', [idParaExcluir]);
+    await pool.query('DELETE FROM clientes WHERE profissional_id = $1', [idParaExcluir]);
+    await pool.query('DELETE FROM servicos WHERE profissional_id = $1', [idParaExcluir]);
+
+    // 3. Finalmente, apaga a conta do profissional!
     await pool.query('DELETE FROM profissionais WHERE id = $1', [idParaExcluir]);
+
     res.json({ message: 'Usuário excluído com sucesso.' });
-  } catch (error) { res.status(500).json({ error: 'Erro ao excluir usuário.' }); }
+  } catch (error) { 
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir usuário.' }); 
+  }
 });
 
 // ROTAS DO PAINEL PROFISSIONAL
