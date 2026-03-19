@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy } from 'lucide-react';
@@ -6,18 +7,13 @@ import PaginaCliente from './PaginaCliente';
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
 // ==========================================
-// 🔐 TELA DE AUTENTICAÇÃO (BLINDADA)
+// 🔐 TELA DE AUTENTICAÇÃO BLINDADA
 // ==========================================
 function TelaAuth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState('');
-  
-  // 🌟 NOVOS ESTADOS DE CARREGAMENTO
-  const [carregando, setCarregando] = useState(false);
+  const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); 
+  const [telefone, setTelefone] = useState(''); const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState(''); const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
   const [fluxoGoogle, setFluxoGoogle] = useState(null); 
 
@@ -25,16 +21,12 @@ function TelaAuth({ onLogin }) {
   const validarTelefone = (tel) => tel.replace(/\D/g, '').length >= 10;
 
   const handleSubmitTradicional = async (e) => {
-    e.preventDefault();
-    setErro('');
-    
-    // 🛡️ TRAVAS DE SEGURANÇA ANTI-HACKER RESTAURADAS
+    e.preventDefault(); setErro('');
     if (!validarEmail(email)) return setErro('Por favor, insira um e-mail válido.');
     if (senha.length < 6) return setErro('⚠️ Segurança: A senha deve ter no mínimo 6 caracteres.');
-    if (!isLogin && !validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido com DDD.');
+    if (!isLogin && !validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido.');
 
-    setCarregando(true); // O botão vai mudar para "Conectando..."
-
+    setCarregando(true);
     const endpoint = isLogin ? '/login' : '/cadastro';
     const body = isLogin ? { email, senha } : { nome, email, senha, telefone };
 
@@ -43,60 +35,35 @@ function TelaAuth({ onLogin }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na autenticação');
       onLogin(data.token, data.usuario);
-    } catch (err) { 
-      // Se der erro de "Failed to fetch", é porque o Render está acordando
-      if (err.message === 'Failed to fetch') {
-        setErro('O servidor está acordando. Por favor, aguarde uns segundos e tente novamente.');
-      } else {
-        setErro(err.message);
-      }
-    } finally {
-      setCarregando(false);
-    }
+    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde...' : err.message); } 
+    finally { setCarregando(false); }
   };
 
   const handleGoogleClick = async () => {
-    setErro('');
-    setCarregandoGoogle(true);
+    setErro(''); setCarregandoGoogle(true);
     const mockEmail = `cabeleireiro${Math.floor(Math.random() * 1000)}@gmail.com`;
     const mockNome = "Salão " + Math.floor(Math.random() * 100);
 
     try {
-      const res = await fetch(`${API_URL}/google/check`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ email: mockEmail, nome: mockNome }) 
-      });
+      const res = await fetch(`${API_URL}/google/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mockEmail, nome: mockNome }) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro interno no banco de dados.');
+      if (!res.ok) throw new Error(data.error || 'Erro interno.');
 
-      if (data.action === 'login') {
-        onLogin(data.token, data.usuario);
-      } else if (data.action === 'register_needed') {
-        setFluxoGoogle({ email: data.email, nome: data.nome });
-        setNome(data.nome); setEmail(data.email);
-      }
-    } catch (err) { 
-      if (err.message === 'Failed to fetch') {
-        setErro('O servidor está acordando. Por favor, aguarde uns segundos e tente novamente.');
-      } else {
-        setErro('Falha na conexão. Verifique o servidor ou tente novamente.'); 
-      }
-    } finally {
-      setCarregandoGoogle(false);
-    }
+      if (data.action === 'login') onLogin(data.token, data.usuario);
+      else if (data.action === 'register_needed') { setFluxoGoogle({ email: data.email, nome: data.nome }); setNome(data.nome); setEmail(data.email); }
+    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde...' : 'Falha na conexão.'); } 
+    finally { setCarregandoGoogle(false); }
   };
 
   const handleCompletarGoogle = async (e) => {
-    e.preventDefault();
-    setErro('');
-    if (!validarTelefone(telefone)) return setErro('Por favor, insira um WhatsApp válido com DDD.');
+    e.preventDefault(); setErro('');
+    if (!validarTelefone(telefone)) return setErro('Insira um WhatsApp válido.');
     setCarregando(true);
 
     try {
       const res = await fetch(`${API_URL}/google/cadastro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, email: fluxoGoogle.email, telefone }) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao finalizar cadastro');
+      if (!res.ok) throw new Error(data.error || 'Erro ao finalizar.');
       onLogin(data.token, data.usuario);
     } catch (err) { setErro(err.message); } finally { setCarregando(false); }
   };
@@ -110,33 +77,28 @@ function TelaAuth({ onLogin }) {
           {fluxoGoogle ? (
              <div className="animate-slide-up">
                 <h2 className="text-2xl text-[#D4AF37] font-['Playfair_Display'] mb-2 text-center">Falta pouco!</h2>
-                <p className="text-xs text-[#A8A8A8] text-center mb-6 font-light leading-relaxed">Para o sistema de agendamento funcionar, precisamos do seu número de WhatsApp.</p>
-                {erro && <div className="bg-red-900/20 border border-red-900/50 text-red-200 p-3 rounded-lg text-sm mb-4 text-center">{erro}</div>}
+                <p className="text-xs text-[#A8A8A8] text-center mb-6 font-light leading-relaxed">Precisamos do seu número de WhatsApp.</p>
+                {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center">{erro}</div>}
                 <form onSubmit={handleCompletarGoogle} className="space-y-4">
-                  <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome do Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none text-sm" /></div>
-                  <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required placeholder="Ex: 11999999999" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none text-sm" /></div>
-                  <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-4 transition-colors ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
-                    {carregando ? 'Conectando...' : 'Finalizar Cadastro'}
-                  </button>
+                  <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                  <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                  <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-4 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>{carregando ? 'Conectando...' : 'Finalizar Cadastro'}</button>
                 </form>
              </div>
           ) : (
             <div>
               <h2 className="text-2xl text-white font-['Playfair_Display'] mb-6 text-center">{isLogin ? 'Acesse seu espaço' : 'Crie sua exclusividade'}</h2>
-              {erro && <div className="bg-red-900/20 border border-red-900/50 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
+              {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
               <form onSubmit={handleSubmitTradicional} className="space-y-4">
                 {!isLogin && (
                   <>
-                    <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome do Profissional / Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
-                    <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required placeholder="Ex: 11999999999" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
+                    <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Profissional / Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                    <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
                   </>
                 )}
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
-                
-                {/* 🌟 MÍNIMO 6 CARACTERES DE VOLTA PELA SEGURANÇA */}
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase tracking-wider mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none transition-colors text-sm" /></div>
-                
-                <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 transition-colors flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
+                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
                   {carregando ? <><Loader2 className="w-4 h-4 animate-spin text-[#0D0D0D]" /> Conectando...</> : (isLogin ? 'Entrar' : 'Cadastrar')}
                 </button>
               </form>
@@ -179,114 +141,94 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [modalSuporte, setModalSuporte] = useState(false);
   const [textoSuporte, setTextoSuporte] = useState('');
 
+  const [qtdAnteriorAgendamentos, setQtdAnteriorAgendamentos] = useState(0);
+  const todosHorarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
+  const [meusHorarios, setMeusHorarios] = useState([]);
+
   const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   const linkCliente = `${linkBase}/agendar/${usuario.id}`;
   const mensagemPromo = encodeURIComponent(`✨ Exclusividade e sofisticação. Agende sua experiência premium com ${usuario.nome}: ${linkCliente}`);
 
   const headersAPI = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
-  const carregarDashboard = useCallback(async () => {
+  const carregarTudo = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/dashboard`, { headers: headersAPI });
-      const data = await res.json();
-      if(res.ok) { setGanhoDia(data.ganhoDia || 0); setQtdAtendimentos(data.qtdAtendimentos || 0); }
-    } catch (error) { console.error(error); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+      fetch(`${API_URL}/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ if(d){ setGanhoDia(d.ganhoDia||0); setQtdAtendimentos(d.qtdAtendimentos||0); }});
+      fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setServicos(d||[]));
+      fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setHistoricoCaixa(d||[]));
+      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ if(d && d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); });
+      
+      if (usuario.is_ceo) {
+        fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(d=>setDadosCeo(d||{ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] }));
+      }
 
-  const carregarServicos = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/servicos`, { headers: headersAPI });
-      if(res.ok) setServicos(await res.json());
-    } catch (error) { console.error(error); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const carregarAgenda = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/agendamentos`, { headers: headersAPI });
-      if(res.ok) setAgendamentos(await res.json());
-    } catch (error) { console.error(error); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const carregarCaixa = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/vendas`, { headers: headersAPI });
-      if(res.ok) setHistoricoCaixa(await res.json());
-    } catch (error) { console.error(error); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const carregarDadosCeo = useCallback(async () => {
-    if (!usuario.is_ceo) return;
-    try {
-      const res = await fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI });
-      if(res.ok) setDadosCeo(await res.json());
-    } catch (error) { console.error(error); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, usuario.is_ceo]);
+      fetch(`${API_URL}/agendamentos`, { headers: headersAPI }).then(r=>r.json()).then(d => {
+        if(d) {
+          if (d.length > qtdAnteriorAgendamentos && qtdAnteriorAgendamentos !== 0) {
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(erroAudio=>console.log(erroAudio));
+          }
+          setAgendamentos(d);
+          setQtdAnteriorAgendamentos(d.length);
+        }
+      });
+    } catch (errorLog) { console.error(errorLog); }
+  }, [token, qtdAnteriorAgendamentos, usuario.is_ceo]);
 
   useEffect(() => {
-    const iniciar = async () => {
-      await carregarDashboard(); await carregarServicos(); await carregarAgenda(); await carregarCaixa(); await carregarDadosCeo();
-    };
-    iniciar();
-  }, [carregarDashboard, carregarServicos, carregarAgenda, carregarCaixa, carregarDadosCeo]);
+    carregarTudo();
+    const intervalo = setInterval(carregarTudo, 30000); 
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const salvarMeusHorarios = async (horaClicada) => {
+    let novosHorarios = [...meusHorarios];
+    if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada);
+    else novosHorarios.push(horaClicada);
+    novosHorarios.sort();
+    setMeusHorarios(novosHorarios);
+    try {
+      await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) });
+    } catch (erroSalvarHora) { 
+      console.error(erroSalvarHora);
+      alert("Erro ao salvar o horário. Tente novamente."); 
+    }
+  };
 
   const adicionarServico = async () => {
     if (!novoServico.nome || !novoServico.preco) return;
-    try {
-      await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) });
-      setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarServicos();
-    } catch (error) { console.error(error); }
+    await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) });
+    setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarTudo();
   };
   
-  const removerServico = async (id) => {
-    try { await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE', headers: headersAPI }); carregarServicos(); } catch (error) { console.error(error); }
-  };
+  const removerServico = async (id) => { await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
   const confirmarVenda = async (e) => {
     e.preventDefault();
     if (!vendaServico) return;
-    try {
-      await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) });
-      setVendaNome(''); setVendaServico(null); setModalAberto(false);
-      carregarDashboard(); carregarCaixa(); carregarDadosCeo();
-    } catch (error) { console.error(error); }
+    await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) });
+    setVendaNome(''); setVendaServico(null); setModalAberto(false); carregarTudo();
   };
 
   const concluirAtendimento = async (agendamento) => {
-    try {
-      await fetch(`${API_URL}/agendamentos/${agendamento.id}/concluir`, { method: 'POST', headers: headersAPI });
-      carregarAgenda(); carregarDashboard(); carregarCaixa(); carregarDadosCeo();
-
-      if (agendamento.cliente_whatsapp) {
-        const numeroCliente = agendamento.cliente_whatsapp.replace(/\D/g, '');
-        const nomeCliente = agendamento.cliente_nome ? agendamento.cliente_nome.split(' ')[0] : 'Cliente';
-        const nomeDoSalao = usuario.nome;
-        const textoAgradecimento = `✨ Olá, ${nomeCliente}! Aqui é do ${nomeDoSalao}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
-        window.open(`https://wa.me/55${numeroCliente}?text=${encodeURIComponent(textoAgradecimento)}`, '_blank');
-      }
-    } catch (error) { console.error("Erro ao concluir", error); }
+    await fetch(`${API_URL}/agendamentos/${agendamento.id}/concluir`, { method: 'POST', headers: headersAPI });
+    carregarTudo();
+    if (agendamento.cliente_whatsapp) {
+      const num = agendamento.cliente_whatsapp.replace(/\D/g, '');
+      const txt = `✨ Olá, ${agendamento.cliente_nome.split(' ')[0]}! Aqui é do ${usuario.nome}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
+      window.open(`https://wa.me/55${num}?text=${encodeURIComponent(txt)}`, '_blank');
+    }
   };
 
   const excluirEmpresa = async (id, nomeEmpresa) => {
     if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir permanentemente o salão "${nomeEmpresa}"?\nTodos os dados, serviços e faturamento deles serão apagados.`)) return;
-    try {
-      const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI });
-      if (res.ok) { alert("Salão removido com sucesso do sistema."); carregarDadosCeo(); } 
-      else { const erro = await res.json(); alert(erro.error || "Erro ao excluir."); }
-    } catch (error) { console.error(error); }
+    const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI });
+    if (res.ok) { alert("Removido com sucesso."); carregarTudo(); } else { alert("Erro ao excluir."); }
   };
 
   const enviarSuporteParaCEO = (e) => {
     e.preventDefault();
-    const numeroDoCEO = '5573998055316'; 
-    const texto = `💡 *Novo Ticket de Suporte/Sugestão*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`;
-    window.open(`https://wa.me/${numeroDoCEO}?text=${encodeURIComponent(texto)}`, '_blank');
-    setModalSuporte(false);
-    setTextoSuporte('');
+    window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank');
+    setModalSuporte(false); setTextoSuporte('');
   };
 
   return (
@@ -328,7 +270,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
                   <div key={ag.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-2xl flex flex-col gap-4 group hover:border-[#D4AF37]/50 transition-colors">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[#D4AF37] font-['Playfair_Display'] text-xl block mb-1">{ag.data_reserva} às {ag.horario}</span>
+                        <span className="text-[#D4AF37] font-['Playfair_Display'] text-xl block mb-1">{ag.data_reserva} às {ag.horario.split(',')[0]}</span>
                         <p className="text-white font-medium">{ag.cliente_nome}</p>
                         <p className="text-[#A8A8A8] text-sm mt-1">{ag.servico_nome}</p>
                       </div>
@@ -375,7 +317,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 <div><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome da Experiência</label><input type="text" value={novoServico.nome} onChange={(e) => setNovoServico({...novoServico, nome: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div>
                 <div className="flex gap-4">
                   <div className="flex-1"><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Valor (R$)</label><input type="text" value={novoServico.preco} onChange={(e) => setNovoServico({...novoServico, preco: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none"/></div>
-                  <div className="flex-1"><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Tempo</label><input type="text" value={novoServico.tempo} onChange={(e) => setNovoServico({...novoServico, tempo: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div>
+                  <div className="flex-1"><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Tempo (Ex: 1h30min)</label><input type="text" value={novoServico.tempo} onChange={(e) => setNovoServico({...novoServico, tempo: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div>
                 </div>
                 <button onClick={adicionarServico} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium mt-2">Salvar Experiência</button>
               </div>
@@ -387,6 +329,21 @@ function PainelProfissional({ token, usuario, onLogout }) {
                     <div className="flex items-center gap-5"><span className="text-[#D4AF37] text-xl">R$ {parseFloat(servico.preco).toFixed(2).replace('.', ',')}</span><button onClick={() => removerServico(servico.id)} className="text-[#6F6F6F] hover:text-[#ff4d4d] p-2"><Trash2 size={18} /></button></div>
                   </div>
               ))}
+            </div>
+
+            <div className="pt-8 border-t border-[#2A2A2A] mt-8">
+               <h2 className="text-xl font-normal font-['Playfair_Display'] text-white mb-2">Grade de Horários</h2>
+               <p className="text-xs text-[#A8A8A8] mb-6 font-light leading-relaxed">Selecione apenas os horários em que você trabalha. Desmarque os horários de almoço ou pausas para bloqueá-los na agenda.</p>
+               <div className="grid grid-cols-3 gap-3">
+                 {todosHorarios.map(hora => {
+                    const atende = meusHorarios.includes(hora);
+                    return (
+                      <button key={hora} onClick={() => salvarMeusHorarios(hora)} className={`py-3 rounded-xl border text-sm transition-colors ${atende ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.2)]' : 'bg-[#0D0D0D] text-[#4A4A4A] border-[#2A2A2A] line-through hover:border-[#6F6F6F]'}`}>
+                        {hora}
+                      </button>
+                    );
+                 })}
+               </div>
             </div>
           </div>
         )}
@@ -410,36 +367,14 @@ function PainelProfissional({ token, usuario, onLogout }) {
             </div>
             
             <div className="mt-10">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-normal font-['Playfair_Display'] text-white">Gestão de Assinantes</h3>
-              </div>
-              
+              <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-normal font-['Playfair_Display'] text-white">Gestão de Assinantes</h3></div>
               <div className="space-y-4">
-                {dadosCeo.empresas.length === 0 ? (
-                  <p className="text-[#6F6F6F] font-light text-center py-6">Nenhuma empresa cadastrada ainda.</p>
-                ) : (
+                {dadosCeo.empresas.length === 0 ? (<p className="text-[#6F6F6F] font-light text-center py-6">Nenhuma empresa cadastrada ainda.</p>) : (
                   dadosCeo.empresas.map((empresa) => (
                     <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-xl flex justify-between items-center group hover:border-[#D4AF37]/30 transition-all">
-                      <div className="flex-1">
-                        <p className="text-white font-medium text-lg">{empresa.nome}</p>
-                        <p className="text-[#A8A8A8] text-xs mt-1 flex items-center gap-2">
-                          <span className="bg-[#2A2A2A] px-2 py-0.5 rounded text-[10px]">ID: {empresa.id}</span>
-                          {empresa.telefone}
-                        </p>
-                      </div>
-                      
-                      <div className="text-right mr-5">
-                        <span className="text-[10px] text-[#6F6F6F] font-light uppercase tracking-widest block">Faturamento</span>
-                        <span className="text-sm text-[#D4AF37] font-medium block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span>
-                      </div>
-
-                      <button 
-                        onClick={() => excluirEmpresa(empresa.id, empresa.nome)} 
-                        className="p-3 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-lg hover:text-red-500 hover:border-red-900/50 hover:bg-red-900/10 transition-all"
-                        title="Excluir Empresa"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="flex-1"><p className="text-white font-medium text-lg">{empresa.nome}</p><p className="text-[#A8A8A8] text-xs mt-1 flex items-center gap-2"><span className="bg-[#2A2A2A] px-2 py-0.5 rounded text-[10px]">ID: {empresa.id}</span>{empresa.telefone}</p></div>
+                      <div className="text-right mr-5"><span className="text-[10px] text-[#6F6F6F] font-light uppercase tracking-widest block">Faturamento</span><span className="text-sm text-[#D4AF37] font-medium block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span></div>
+                      <button onClick={() => excluirEmpresa(empresa.id, empresa.nome)} className="p-3 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-lg hover:text-red-500 hover:border-red-900/50 hover:bg-red-900/10 transition-all" title="Excluir Empresa"><Trash2 size={18} /></button>
                     </div>
                   ))
                 )}
@@ -478,42 +413,20 @@ function PainelProfissional({ token, usuario, onLogout }) {
         </div>
       )}
 
-      {/* 🌟 BOTÃO FLUTUANTE DE SUPORTE (APENAS PARA PROFISSIONAIS, NÃO PARA O CEO) */}
+      {/* 🌟 BOTÃO DE SUPORTE */}
       {!usuario.is_ceo && (
-        <button 
-          onClick={() => setModalSuporte(true)}
-          className="fixed bottom-24 right-4 bg-[#1A1A1A] text-[#D4AF37] border border-[#2A2A2A] p-3.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.6)] hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors z-40 group"
-          title="Precisa de ajuda do Suporte?"
-        >
-          <LifeBuoy size={22} />
-        </button>
+        <button onClick={() => setModalSuporte(true)} className="fixed bottom-24 right-4 bg-[#1A1A1A] text-[#D4AF37] border border-[#2A2A2A] p-3.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.6)] hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors z-40" title="Precisa de ajuda do Suporte?"><LifeBuoy size={22} /></button>
       )}
 
-      {/* 🌟 MODAL DA CAIXA DE SUPORTE */}
       {modalSuporte && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 animate-fade-in">
           <div className="bg-[#1A1A1A] w-full max-w-sm rounded-3xl p-6 border border-[#2A2A2A] animate-slide-up relative shadow-[0_0_40px_rgba(212,175,55,0.1)]">
             <button onClick={() => setModalSuporte(false)} className="absolute top-5 right-5 text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-1.5 rounded-full transition-colors"><X size={18}/></button>
-            
-            <div className="mb-6 mt-2">
-              <h2 className="text-2xl font-['Playfair_Display'] text-white">Central de Ajuda</h2>
-              <p className="text-xs text-[#D4AF37] mt-1 font-light tracking-wider uppercase">Suporte Técnico AURUM</p>
-            </div>
-
+            <div className="mb-6 mt-2"><h2 className="text-2xl font-['Playfair_Display'] text-white">Central de Ajuda</h2><p className="text-xs text-[#D4AF37] mt-1 font-light tracking-wider uppercase">Suporte Técnico AURUM</p></div>
             <p className="text-sm text-[#A8A8A8] mb-5 font-light leading-relaxed">Encontrou algum problema ou tem sugestões para melhorar o sistema? Envie um ticket direto para o desenvolvedor:</p>
-            
             <form onSubmit={enviarSuporteParaCEO}>
-              <textarea
-                required
-                rows="4"
-                placeholder="Descreva sua solicitação..."
-                className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none resize-none text-sm mb-4 transition-colors"
-                value={textoSuporte}
-                onChange={(e) => setTextoSuporte(e.target.value)}
-              ></textarea>
-              <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm hover:bg-[#E6C76B] transition-colors flex items-center justify-center gap-2">
-                <LifeBuoy size={18} /> Abrir Ticket no WhatsApp
-              </button>
+              <textarea required rows="4" placeholder="Descreva sua solicitação..." className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none resize-none text-sm mb-4 transition-colors" value={textoSuporte} onChange={(e) => setTextoSuporte(e.target.value)}></textarea>
+              <button type="submit" className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm hover:bg-[#E6C76B] transition-colors flex items-center justify-center gap-2"><LifeBuoy size={18} /> Abrir Ticket no WhatsApp</button>
             </form>
           </div>
         </div>
@@ -532,17 +445,8 @@ function NavButton({ icone, texto, ativo, onClick, isDestaque }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('aurum_token'));
-  const [usuario, setUsuario] = useState(JSON.parse(localStorage.getItem('aurum_usuario')));
-  const handleLogin = (newToken, user) => { localStorage.setItem('aurum_token', newToken); localStorage.setItem('aurum_usuario', JSON.stringify(user)); setToken(newToken); setUsuario(user); };
-  const handleLogout = () => { localStorage.removeItem('aurum_token'); localStorage.removeItem('aurum_usuario'); setToken(null); setUsuario(null); };
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={token && usuario ? <PainelProfissional token={token} usuario={usuario} onLogout={handleLogout} /> : <TelaAuth onLogin={handleLogin} />} />
-        <Route path="/agendar/:id_profissional" element={<PaginaCliente />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  const [t, setT] = useState(localStorage.getItem('aurum_token')); const [u, setU] = useState(JSON.parse(localStorage.getItem('aurum_usuario')));
+  const l = (nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); };
+  const out = () => { localStorage.clear(); setT(null); setU(null); };
+  return <BrowserRouter><Routes><Route path="/" element={t && u ? <PainelProfissional token={t} usuario={u} onLogout={out} /> : <TelaAuth onLogin={l} />} /><Route path="/agendar/:id_profissional" element={<PaginaCliente />} /></Routes></BrowserRouter>;
 }
