@@ -36,7 +36,9 @@ const verificarCEO = (req, res, next) => {
   next();
 };
 
-// 🌟 REGISTRO SEM LIMITE DE SENHA OBRIGATÓRIO
+// ==========================================
+// 🛡️ CADASTRO COM TRAVA DUPLA (E-MAIL E TELEFONE)
+// ==========================================
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: 'E-mail inválido.' });
@@ -44,8 +46,15 @@ app.post('/api/cadastro', async (req, res) => {
   if (!telefone || telefone.length < 10) return res.status(400).json({ error: 'Telefone inválido.' });
 
   try {
-    const usuarioExiste = await pool.query('SELECT id FROM profissionais WHERE email = $1', [email]);
-    if (usuarioExiste.rows.length > 0) return res.status(400).json({ error: 'Email já cadastrado.' });
+    // 🛑 VERIFICAÇÃO ABSOLUTA: Bloqueia se o E-mail ou o Telefone já existirem
+    const usuarioExiste = await pool.query('SELECT id, email, telefone FROM profissionais WHERE email = $1 OR telefone = $2', [email, telefone]);
+    
+    if (usuarioExiste.rows.length > 0) {
+      const conflito = usuarioExiste.rows[0];
+      if (conflito.email === email) return res.status(400).json({ error: 'Este e-mail já está cadastrado no sistema.' });
+      if (conflito.telefone === telefone) return res.status(400).json({ error: 'Este número de WhatsApp já está em uso por outro salão.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(senha, salt);
     const isCeo = email === 'codebyanderson@hotmail.com';
@@ -62,13 +71,13 @@ app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const result = await pool.query('SELECT * FROM profissionais WHERE email = $1', [email]);
-    if (result.rows.length === 0) return res.status(400).json({ error: 'Incorreto.' });
+    if (result.rows.length === 0) return res.status(400).json({ error: 'Credenciais incorretas.' });
     const usuario = result.rows[0];
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaValida) return res.status(400).json({ error: 'Incorreto.' });
+    if (!senhaValida) return res.status(400).json({ error: 'Credenciais incorretas.' });
     const token = jwt.sign({ id: usuario.id, is_ceo: usuario.is_ceo }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, is_ceo: usuario.is_ceo }, token });
-  } catch (error) { res.status(500).json({ error: 'Erro login.' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro no login.' }); }
 });
 
 app.post('/api/google/check', async (req, res) => {
@@ -82,12 +91,18 @@ app.post('/api/google/check', async (req, res) => {
     } else {
       return res.json({ action: 'register_needed', email, nome });
     }
-  } catch (error) { res.status(500).json({ error: 'Erro Google.' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro no Google Check.' }); }
 });
 
 app.post('/api/google/cadastro', async (req, res) => {
   const { nome, email, telefone } = req.body;
   try {
+    // 🛑 TRAVA DE WHATSAPP PARA QUEM VEM PELO GOOGLE TAMBÉM
+    const telefoneExiste = await pool.query('SELECT id FROM profissionais WHERE telefone = $1', [telefone]);
+    if (telefoneExiste.rows.length > 0) {
+       return res.status(400).json({ error: 'Este número de WhatsApp já está em uso por outro salão.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(Math.random().toString(36), salt);
     const isCeo = email === 'codebyanderson@hotmail.com';
@@ -97,7 +112,7 @@ app.post('/api/google/cadastro', async (req, res) => {
     );
     const token = jwt.sign({ id: result.rows[0].id, is_ceo: isCeo }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ usuario: result.rows[0], token });
-  } catch (error) { res.status(500).json({ error: 'Erro Google Cad.' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro no Cadastro Google.' }); }
 });
 
 // ==========================================
@@ -108,7 +123,6 @@ app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => 
     const empresasQuery = await pool.query('SELECT COUNT(id) as total FROM profissionais WHERE is_ceo = FALSE');
     const faturamentoQuery = await pool.query('SELECT COALESCE(SUM(valor), 0) as total_global FROM vendas');
     
-    // 🌟 PUXA AS EMPRESAS E SOMA O FATURAMENTO DE CADA UMA
     const listaEmpresas = await pool.query(`
       SELECT p.id, p.nome, p.email, p.telefone, p.data_cadastro, 
              COALESCE(SUM(v.valor), 0) as faturamento_total
@@ -127,18 +141,13 @@ app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => 
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); }
 });
 
-// 🌟 ROTA PARA EXCLUIR USUÁRIO (COM SEGURANÇA ABSOLUTA PARA O CEO)
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => {
   try {
     const idParaExcluir = req.params.id;
-    
-    // Verifica se o usuário que está tentando excluir é um CEO
     const checkUser = await pool.query('SELECT is_ceo FROM profissionais WHERE id = $1', [idParaExcluir]);
     if (checkUser.rows.length > 0 && checkUser.rows[0].is_ceo) {
       return res.status(403).json({ error: 'Acesso negado: O usuário CEO possui segurança absoluta e não pode ser excluído.' });
     }
-
-    // Se não for CEO, exclui a empresa (O banco apagará vendas e serviços automaticamente devido ao ON DELETE CASCADE)
     await pool.query('DELETE FROM profissionais WHERE id = $1', [idParaExcluir]);
     res.json({ message: 'Usuário excluído com sucesso.' });
   } catch (error) { res.status(500).json({ error: 'Erro ao excluir usuário.' }); }
