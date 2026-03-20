@@ -7,15 +7,13 @@ import PaginaCliente from './PaginaCliente';
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
 // ==========================================
-// 🔐 TELA DE AUTENTICAÇÃO BLINDADA
+// 🔐 TELA DE AUTENTICAÇÃO
 // ==========================================
 function TelaAuth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); 
   const [telefone, setTelefone] = useState(''); const [senha, setSenha] = useState('');
   const [erro, setErro] = useState(''); const [carregando, setCarregando] = useState(false);
-  const [carregandoGoogle, setCarregandoGoogle] = useState(false);
-  const [fluxoGoogle, setFluxoGoogle] = useState(null); 
 
   const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validarTelefone = (tel) => tel.replace(/\D/g, '').length >= 10;
@@ -35,37 +33,8 @@ function TelaAuth({ onLogin }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na autenticação');
       onLogin(data.token, data.usuario);
-    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde...' : err.message); } 
+    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde uns segundos...' : err.message); } 
     finally { setCarregando(false); }
-  };
-
-  const handleGoogleClick = async () => {
-    setErro(''); setCarregandoGoogle(true);
-    const mockEmail = `cabeleireiro${Math.floor(Math.random() * 1000)}@gmail.com`;
-    const mockNome = "Salão " + Math.floor(Math.random() * 100);
-
-    try {
-      const res = await fetch(`${API_URL}/google/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: mockEmail, nome: mockNome }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro interno.');
-
-      if (data.action === 'login') onLogin(data.token, data.usuario);
-      else if (data.action === 'register_needed') { setFluxoGoogle({ email: data.email, nome: data.nome }); setNome(data.nome); setEmail(data.email); }
-    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde...' : 'Falha na conexão.'); } 
-    finally { setCarregandoGoogle(false); }
-  };
-
-  const handleCompletarGoogle = async (e) => {
-    e.preventDefault(); setErro('');
-    if (!validarTelefone(telefone)) return setErro('Insira um WhatsApp válido.');
-    setCarregando(true);
-
-    try {
-      const res = await fetch(`${API_URL}/google/cadastro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, email: fluxoGoogle.email, telefone }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao finalizar.');
-      onLogin(data.token, data.usuario);
-    } catch (err) { setErro(err.message); } finally { setCarregando(false); }
   };
 
   return (
@@ -74,45 +43,23 @@ function TelaAuth({ onLogin }) {
         <div className="text-center mb-10"><h1 className="text-5xl font-normal font-['Playfair_Display'] text-[#D4AF37] tracking-widest">AURUM</h1></div>
 
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
-          {fluxoGoogle ? (
-             <div className="animate-slide-up">
-                <h2 className="text-2xl text-[#D4AF37] font-['Playfair_Display'] mb-2 text-center">Falta pouco!</h2>
-                <p className="text-xs text-[#A8A8A8] text-center mb-6 font-light leading-relaxed">Precisamos do seu número de WhatsApp.</p>
-                {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center">{erro}</div>}
-                <form onSubmit={handleCompletarGoogle} className="space-y-4">
-                  <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                  <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                  <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-4 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>{carregando ? 'Conectando...' : 'Finalizar Cadastro'}</button>
-                </form>
-             </div>
-          ) : (
-            <div>
-              <h2 className="text-2xl text-white font-['Playfair_Display'] mb-6 text-center">{isLogin ? 'Acesse seu espaço' : 'Crie sua exclusividade'}</h2>
-              {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
-              <form onSubmit={handleSubmitTradicional} className="space-y-4">
-                {!isLogin && (
-                  <>
-                    <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Profissional / Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                    <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                  </>
-                )}
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
-                  {carregando ? <><Loader2 className="w-4 h-4 animate-spin text-[#0D0D0D]" /> Conectando...</> : (isLogin ? 'Entrar' : 'Cadastrar')}
-                </button>
-              </form>
-              
-              <div className="relative flex items-center py-6"><div className="grow border-t border-[#2A2A2A]"></div><span className="shrink-0 mx-4 text-[#6F6F6F] text-xs font-light">OU</span><div className="grow border-t border-[#2A2A2A]"></div></div>
-              
-              <button type="button" onClick={handleGoogleClick} disabled={carregandoGoogle || carregando} className={`w-full bg-white text-black p-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-3 transition-colors shadow-md ${carregandoGoogle ? 'opacity-80 cursor-wait' : 'hover:bg-gray-200'}`}>
-                {carregandoGoogle ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>}
-                {carregandoGoogle ? 'Acordando servidor...' : 'Entrar com Google'}
-              </button>
-              
-              <div className="mt-8 text-center"><button onClick={() => { setIsLogin(!isLogin); setErro(''); setSenha(''); }} className="text-[#A8A8A8] text-sm hover:text-white transition-colors">{isLogin ? 'Não tem uma conta? Crie aqui.' : 'Já tem uma conta? Faça login.'}</button></div>
-            </div>
-          )}
+          <h2 className="text-2xl text-white font-['Playfair_Display'] mb-6 text-center">{isLogin ? 'Acesse seu espaço' : 'Crie sua exclusividade'}</h2>
+          {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
+          <form onSubmit={handleSubmitTradicional} className="space-y-4">
+            {!isLogin && (
+              <>
+                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Profissional / Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+              </>
+            )}
+            <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+            <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
+            <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
+              {carregando ? <><Loader2 className="w-4 h-4 animate-spin text-[#0D0D0D]" /> Conectando...</> : (isLogin ? 'Entrar' : 'Cadastrar')}
+            </button>
+          </form>
+          
+          <div className="mt-8 text-center"><button onClick={() => { setIsLogin(!isLogin); setErro(''); setSenha(''); }} className="text-[#A8A8A8] text-sm hover:text-white transition-colors">{isLogin ? 'Não tem uma conta? Crie aqui.' : 'Já tem uma conta? Faça login.'}</button></div>
         </div>
       </div>
     </div>
@@ -165,7 +112,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
       fetch(`${API_URL}/agendamentos`, { headers: headersAPI }).then(r=>r.json()).then(d => {
         if(d) {
           if (d.length > qtdAnteriorAgendamentos && qtdAnteriorAgendamentos !== 0) {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(erroAudio=>console.log(erroAudio));
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(erroAudio=>console.log("Áudio bloqueado pelo navegador", erroAudio));
           }
           setAgendamentos(d);
           setQtdAnteriorAgendamentos(d.length);
@@ -348,6 +295,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
           </div>
         )}
 
+        {/* 🌟 PAINEL DO CEO AGORA COM E-MAIL! */}
         {telaAtiva === 'ceo' && usuario.is_ceo && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-10">
@@ -372,7 +320,13 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 {dadosCeo.empresas.length === 0 ? (<p className="text-[#6F6F6F] font-light text-center py-6">Nenhuma empresa cadastrada ainda.</p>) : (
                   dadosCeo.empresas.map((empresa) => (
                     <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-xl flex justify-between items-center group hover:border-[#D4AF37]/30 transition-all">
-                      <div className="flex-1"><p className="text-white font-medium text-lg">{empresa.nome}</p><p className="text-[#A8A8A8] text-xs mt-1 flex items-center gap-2"><span className="bg-[#2A2A2A] px-2 py-0.5 rounded text-[10px]">ID: {empresa.id}</span>{empresa.telefone}</p></div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium text-lg">{empresa.nome}</p>
+                        <div className="text-[#A8A8A8] text-xs mt-2 flex flex-col gap-1.5">
+                          <span className="flex items-center gap-2"><span className="bg-[#2A2A2A] text-white px-2 py-0.5 rounded text-[10px]">ID: {empresa.id}</span> {empresa.telefone}</span>
+                          <span className="text-[#6F6F6F] flex items-center gap-2">✉️ {empresa.email}</span>
+                        </div>
+                      </div>
                       <div className="text-right mr-5"><span className="text-[10px] text-[#6F6F6F] font-light uppercase tracking-widest block">Faturamento</span><span className="text-sm text-[#D4AF37] font-medium block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span></div>
                       <button onClick={() => excluirEmpresa(empresa.id, empresa.nome)} className="p-3 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-lg hover:text-red-500 hover:border-red-900/50 hover:bg-red-900/10 transition-all" title="Excluir Empresa"><Trash2 size={18} /></button>
                     </div>

@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-pool.connect().then(() => console.log('💎 Servidor Conectado!')).catch(err => console.error(err));
+pool.connect().then(() => console.log('💎 Servidor Conectado e Limpo!')).catch(err => console.error(err));
 
 const JWT_SECRET = 'aurum_premium_saas_2026_seguro';
 
@@ -24,7 +24,9 @@ const verificarToken = (req, res, next) => {
 };
 const verificarCEO = (req, res, next) => { if (!req.isCeo) return res.status(403).json({ error: 'Acesso negado.' }); next(); };
 
-// ROTAS DE AUTENTICAÇÃO
+// ==========================================
+// 🛡️ AUTENTICAÇÃO TRADICIONAL (SEGURA)
+// ==========================================
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
   try {
@@ -50,30 +52,16 @@ app.post('/api/login', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro no login.' }); }
 });
 
-app.post('/api/google/check', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM profissionais WHERE email = $1', [req.body.email]);
-    if (result.rows.length > 0) return res.json({ action: 'login', token: jwt.sign({ id: result.rows[0].id, is_ceo: result.rows[0].is_ceo }, JWT_SECRET, { expiresIn: '7d' }), usuario: result.rows[0] });
-    res.json({ action: 'register_needed', email: req.body.email, nome: req.body.nome });
-  } catch (error) { res.status(500).json({ error: 'Erro Google.' }); }
-});
-
-app.post('/api/google/cadastro', async (req, res) => {
-  try {
-    if ((await pool.query('SELECT id FROM profissionais WHERE telefone = $1', [req.body.telefone])).rows.length > 0) return res.status(400).json({ error: 'WhatsApp já em uso.' });
-    const isCeo = req.body.email === 'codebyanderson@hotmail.com';
-    const result = await pool.query('INSERT INTO profissionais (nome, email, senha, telefone, is_ceo) VALUES ($1, $2, $3, $4, $5) RETURNING id, nome, email, is_ceo', [req.body.nome, req.body.email, await bcrypt.hash(Math.random().toString(), 10), req.body.telefone, isCeo]);
-    res.status(201).json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: isCeo }, JWT_SECRET, { expiresIn: '7d' }) });
-  } catch (error) { res.status(500).json({ error: 'Erro Google Cad.' }); }
-});
-
-// ROTAS DO CEO E DASHBOARD...
+// ==========================================
+// 🛡️ ROTAS DO CEO E DASHBOARD
+// ==========================================
 app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => {
   try {
     const empresas = await pool.query(`SELECT p.id, p.nome, p.email, p.telefone, COALESCE(SUM(v.valor), 0) as faturamento_total FROM profissionais p LEFT JOIN vendas v ON p.id = v.profissional_id WHERE p.is_ceo = FALSE GROUP BY p.id`);
     res.json({ totalEmpresas: empresas.rows.length, faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), empresas: empresas.rows });
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); }
 });
+
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => {
   try {
     if ((await pool.query('SELECT is_ceo FROM profissionais WHERE id = $1', [req.params.id])).rows[0]?.is_ceo) return res.status(403).json({ error: 'Negado.' });
@@ -81,6 +69,7 @@ app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, re
     res.json({ message: 'Excluído' });
   } catch (error) { res.status(500).json({ error: 'Erro' }); }
 });
+
 app.get('/api/dashboard', verificarToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]);
@@ -88,7 +77,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro dash' }); }
 });
 
-// 🌟 NOVA ROTA: SALVAR HORÁRIOS DE TRABALHO
+// HORÁRIOS DE TRABALHO
 app.get('/api/configuracoes', verificarToken, async (req, res) => {
   try { const r = await pool.query('SELECT horarios_trabalho FROM profissionais WHERE id = $1', [req.profissionalId]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
@@ -108,7 +97,7 @@ app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
   if(agenda.rows.length > 0) { await pool.query("UPDATE agendamentos SET status = 'concluido' WHERE id = $1", [req.params.id]); await pool.query('INSERT INTO vendas (profissional_id, valor) VALUES ($1, $2)', [req.profissionalId, agenda.rows[0].valor]); res.json({ message: 'Concluído!' }); }
 });
 
-// 🌟 ROTAS PÚBLICAS (LÓGICA DOS HORÁRIOS MÚLTIPLOS)
+// ROTAS PÚBLICAS
 app.get('/api/public/profissional/:id_profissional', async (req, res) => {
   try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
