@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronRight, Clock, Calendar as CalendarIcon, CheckCircle2, ArrowLeft, Phone, Gift, Star } from 'lucide-react';
+import { ChevronRight, Clock, CheckCircle2, ArrowLeft, Star } from 'lucide-react';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
@@ -28,27 +28,41 @@ export default function PaginaCliente() {
   const [ultimoServico, setUltimoServico] = useState(null); 
   const [horariosOcupados, setHorariosOcupados] = useState([]);
   
-  // Lista oficial puxada do banco do profissional
   const [horariosDoProfissional, setHorariosDoProfissional] = useState([]);
 
   useEffect(() => {
     if (!id_profissional) return;
-    fetch(`${API_URL}/public/profissional/${id_profissional}`).then(res => res.json()).then(data => {
-      setDadosProfissional(data);
-      if(data.horarios_trabalho) setHorariosDoProfissional(data.horarios_trabalho.split(','));
-    });
-    fetch(`${API_URL}/public/servicos/${id_profissional}`).then(res => res.json()).then(data => setServicos(data));
+    fetch(`${API_URL}/public/profissional/${id_profissional}`)
+      .then(res => res.json())
+      .then(data => {
+        setDadosProfissional(data);
+        if(data.horarios_trabalho) setHorariosDoProfissional(data.horarios_trabalho.split(','));
+      })
+      .catch(err => console.error("Erro prof:", err));
+
+    fetch(`${API_URL}/public/servicos/${id_profissional}`)
+      .then(res => res.json())
+      .then(data => setServicos(data))
+      .catch(err => console.error("Erro serv:", err));
   }, [id_profissional]);
 
   useEffect(() => {
     if (!id_profissional || !dataEscolhida) return;
     fetch(`${API_URL}/public/horarios-ocupados/${id_profissional}?data=${encodeURIComponent(dataEscolhida)}`)
-      .then(res => res.json()).then(data => setHorariosOcupados(data));
+      .then(res => res.json())
+      .then(data => setHorariosOcupados(data))
+      .catch(err => console.error("Erro ocupados:", err));
   }, [id_profissional, dataEscolhida]);
 
   const avancarParaServicos = async () => {
     if (!podeContinuar) return;
-    try { const data = await (await fetch(`${API_URL}/public/historico/${id_profissional}/${whatsapp}`)).json(); setUltimoServico(data.ultimoServico || null); } catch (e) {}
+    try { 
+        const res = await fetch(`${API_URL}/public/historico/${id_profissional}/${whatsapp}`);
+        const data = await res.json();
+        setUltimoServico(data.ultimoServico || null); 
+    } catch (erroHistorico) {
+        console.error("Sem histórico anterior:", erroHistorico);
+    }
     setEtapa(2);
   };
 
@@ -61,7 +75,6 @@ export default function PaginaCliente() {
   const valorTotal = servicosEscolhidos.reduce((acc, curr) => acc + parseFloat(curr.preco), 0);
   const nomesServicosCombinados = servicosEscolhidos.map(s => s.nome).join(' + ');
 
-  // 🌟 LÓGICA INTELIGENTE DE TEMPO
   const calcularBlocosDeHorario = (horarioInicial) => {
     let minutosTotais = 0;
     servicosEscolhidos.forEach(s => {
@@ -71,16 +84,16 @@ export default function PaginaCliente() {
         let p = t.split('h'); min += parseInt(p[0]) * 60;
         if (p[1] && p[1].includes('min')) min += parseInt(p[1].replace('min', ''));
       } else if (t.includes('min')) { min += parseInt(t.replace('min', '')); }
-      minutosTotais += min || 60; // Se errar, cobra 1h
+      minutosTotais += min || 60; 
     });
 
-    let blocosNecessarios = Math.ceil(minutosTotais / 60); // Se deu 2h30, vai usar 3 blocos (Ex: 8h, 9h, 10h)
+    let blocosNecessarios = Math.ceil(minutosTotais / 60); 
     let index = horariosDoProfissional.indexOf(horarioInicial);
     let horariosParaBloquear = [];
     for(let i = 0; i < blocosNecessarios; i++) {
        if(horariosDoProfissional[index + i]) horariosParaBloquear.push(horariosDoProfissional[index + i]);
     }
-    return horariosParaBloquear.join(','); // Manda "08:00,09:00,10:00" pro banco
+    return horariosParaBloquear.join(','); 
   };
 
   const finalizarAgendamento = async () => {
@@ -92,7 +105,10 @@ export default function PaginaCliente() {
       });
       const num = dadosProfissional?.telefone?.replace(/\D/g, '') || '';
       window.open(`https://wa.me/55${num}?text=${encodeURIComponent(`✨ *Nova Reserva VIP* ✨\n\n*Cliente:* ${nome}\n*Contato:* ${whatsapp}\n*Serviços:* ${nomesServicosCombinados}\n*Data:* ${dataEscolhida}\n*Início:* ${horarioEscolhido}\n*Total:* R$ ${valorTotal.toFixed(2).replace('.', ',')}`)}`, '_blank');
-    } catch (error) { alert("Houve um erro."); }
+    } catch (erroAgendar) { 
+        console.error("Erro na reserva:", erroAgendar);
+        alert("Houve um erro ao tentar agendar. Tente novamente."); 
+    }
   };
 
   const podeContinuar = nome.trim() !== '' && whatsapp.trim().length >= 10;
@@ -109,11 +125,14 @@ export default function PaginaCliente() {
           {etapa === 1 && (
             <div className="space-y-10 animate-slide-up mt-8">
               <div className="text-center space-y-3"><h2 className="text-4xl font-normal font-['Playfair_Display'] text-white">Bem-vindo(a).</h2></div>
-              <div className="space-y-6">
+              
+              <div className="space-y-4">
                 <input type="text" placeholder="Nome completo" className="w-full bg-[#1A1A1A] border border-[#2A2A2A] p-5 text-white rounded-xl focus:border-[#D4AF37] outline-none" value={nome} onChange={(e) => setNome(e.target.value)}/>
                 <input type="tel" placeholder="Seu WhatsApp (com DDD)" className="w-full bg-[#1A1A1A] border border-[#2A2A2A] p-5 text-white rounded-xl focus:border-[#D4AF37] outline-none" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}/>
+                <input type="text" placeholder="Nascimento (Opcional - Ex: 15/05)" className="w-full bg-[#1A1A1A] border border-[#2A2A2A] p-5 text-white rounded-xl focus:border-[#D4AF37] outline-none" value={nascimento} onChange={(e) => setNascimento(e.target.value)}/>
               </div>
-              <button onClick={avancarParaServicos} className={`w-full p-5 flex items-center justify-between rounded-xl mt-8 ${podeContinuar ? 'bg-[#D4AF37] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F]'}`}><span>Continuar</span> <ChevronRight size={20} /></button>
+
+              <button onClick={avancarParaServicos} className={`w-full p-5 flex items-center justify-between rounded-xl mt-8 transition-colors ${podeContinuar ? 'bg-[#D4AF37] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F] cursor-not-allowed'}`}><span>Continuar</span> <ChevronRight size={20} /></button>
             </div>
           )}
 
@@ -122,18 +141,23 @@ export default function PaginaCliente() {
               <h2 className="text-3xl font-normal font-['Playfair_Display'] text-center">Quais serviços deseja?</h2>
               <div className="space-y-4">
                 {servicos.map((servico) => {
+                  // AQUI VOLTA A ESTRELA DE ÚLTIMO SERVIÇO!
+                  const isUltimo = ultimoServico && ultimoServico.includes(servico.nome);
                   const isSelecionado = servicosEscolhidos.some(s => s.id === servico.id);
                   return (
-                    <button key={servico.id} onClick={() => toggleServico(servico)} className={`w-full text-left p-6 rounded-xl flex justify-between items-center border-2 ${isSelecionado ? 'bg-[#1A1A1A] border-[#D4AF37]' : 'bg-[#1A1A1A] border-[#2A2A2A]'}`}>
-                      <div><h3 className={`text-lg font-light ${isSelecionado ? 'text-[#D4AF37]' : 'text-white'}`}>{servico.nome}</h3><p className="text-sm text-[#A8A8A8] mt-2 flex items-center gap-2"><Clock size={14} /> {servico.tempo}</p></div>
-                      <div className="flex items-center gap-4"><span className="text-xl">R$ {parseFloat(servico.preco).toFixed(2).replace('.', ',')}</span>{isSelecionado && <CheckCircle2 size={20} className="text-[#D4AF37]" />}</div>
+                    <button key={servico.id} onClick={() => toggleServico(servico)} className={`w-full text-left p-6 rounded-xl flex flex-col justify-center relative overflow-hidden border-2 transition-all ${isSelecionado ? 'bg-[#1A1A1A] border-[#D4AF37]' : 'bg-[#1A1A1A] border-[#2A2A2A]'}`}>
+                      {isUltimo && !isSelecionado && (<div className="absolute top-0 left-0 w-full bg-[#D4AF37]/10 text-[#D4AF37] text-[10px] uppercase tracking-widest font-bold text-center py-1 flex justify-center items-center gap-1"><Star size={10} /> Seu último pedido</div>)}
+                      <div className={`flex justify-between items-center w-full ${isUltimo && !isSelecionado ? 'mt-4' : ''}`}>
+                        <div><h3 className={`text-lg font-light ${isSelecionado ? 'text-[#D4AF37]' : 'text-white'}`}>{servico.nome}</h3><p className="text-sm text-[#A8A8A8] mt-2 flex items-center gap-2"><Clock size={14} /> {servico.tempo}</p></div>
+                        <div className="flex items-center gap-4"><span className="text-xl font-['Playfair_Display']">R$ {parseFloat(servico.preco).toFixed(2).replace('.', ',')}</span>{isSelecionado && <CheckCircle2 size={20} className="text-[#D4AF37]" />}</div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
               <div className="w-full h-32 opacity-0"></div>
               <div className="fixed bottom-0 left-0 w-full flex justify-center p-6 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D]/90 to-transparent z-20">
-                <button onClick={() => setEtapa(3)} disabled={servicosEscolhidos.length === 0} className={`w-full max-w-md p-5 flex items-center justify-between rounded-xl ${servicosEscolhidos.length > 0 ? 'bg-[#D4AF37] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F]'}`}><div className="flex flex-col text-left"><span className="text-[10px] uppercase font-bold">Total</span><span className="text-xl">R$ {valorTotal.toFixed(2).replace('.', ',')}</span></div><div><span className="font-medium uppercase text-sm">Agendar</span></div></button>
+                <button onClick={() => setEtapa(3)} disabled={servicosEscolhidos.length === 0} className={`w-full max-w-md p-5 flex items-center justify-between rounded-xl transition-all ${servicosEscolhidos.length > 0 ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.3)]' : 'bg-[#1A1A1A] text-[#6F6F6F]'}`}><div className="flex flex-col text-left"><span className="text-[10px] uppercase font-bold">Total</span><span className="text-xl font-['Playfair_Display']">R$ {valorTotal.toFixed(2).replace('.', ',')}</span></div><div><span className="font-medium uppercase text-sm flex items-center gap-2">Agendar <ChevronRight size={18}/></span></div></button>
               </div>
             </div>
           )}
@@ -144,20 +168,20 @@ export default function PaginaCliente() {
               <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-[#2A2A2A] mb-8">
                  <div className="flex overflow-x-auto gap-3 pb-6 mb-6 border-b border-[#2A2A2A] no-scrollbar">
                    {diasDisponiveis.map((dia) => (
-                     <button key={dia.valor} onClick={() => { setDataEscolhida(dia.valor); setHorarioEscolhido(''); }} className={`shrink-0 px-4 py-2 rounded-lg border ${dataEscolhida === dia.valor ? 'bg-[#D4AF37] border-[#D4AF37] text-[#0D0D0D]' : 'bg-[#0D0D0D] border-[#2A2A2A] text-[#A8A8A8]'}`}>{dia.label}</button>
+                     <button key={dia.valor} onClick={() => { setDataEscolhida(dia.valor); setHorarioEscolhido(''); }} className={`shrink-0 px-4 py-2 rounded-lg border transition-colors ${dataEscolhida === dia.valor ? 'bg-[#D4AF37] border-[#D4AF37] text-[#0D0D0D]' : 'bg-[#0D0D0D] border-[#2A2A2A] text-[#A8A8A8]'}`}>{dia.label}</button>
                    ))}
                  </div>
                  <div className="grid grid-cols-3 gap-3">
                    {horariosDoProfissional.length > 0 ? horariosDoProfissional.map((hora) => {
                      const isOcupado = horariosOcupados.includes(hora);
                      if (isOcupado) return <button key={hora} disabled className="py-3 rounded-xl border bg-[#0D0D0D] border-[#1A1A1A] text-[#4A4A4A] line-through">{hora}</button>;
-                     return <button key={hora} onClick={() => setHorarioEscolhido(hora)} className={`py-3 rounded-xl border ${horarioEscolhido === hora ? 'bg-[#D4AF37] border-[#D4AF37] text-[#0D0D0D]' : 'bg-[#0D0D0D] border-[#2A2A2A] text-[#A8A8A8]'}`}>{hora}</button>;
+                     return <button key={hora} onClick={() => setHorarioEscolhido(hora)} className={`py-3 rounded-xl border transition-all ${horarioEscolhido === hora ? 'bg-[#D4AF37] border-[#D4AF37] text-[#0D0D0D]' : 'bg-[#0D0D0D] border-[#2A2A2A] text-[#A8A8A8]'}`}>{hora}</button>;
                    }) : <p className="text-xs text-[#6F6F6F] col-span-3 text-center">O salão não configurou os horários.</p>}
                  </div>
               </div>
               <div className="w-full h-32 opacity-0"></div>
               <div className="fixed bottom-0 left-0 w-full flex justify-center p-6 bg-linear-to-t from-[#0D0D0D] via-[#0D0D0D]/90 to-transparent z-20">
-                <button onClick={finalizarAgendamento} disabled={!horarioEscolhido} className={`w-full max-w-md p-5 flex items-center justify-center gap-3 rounded-xl ${horarioEscolhido ? 'bg-[#D4AF37] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F]'}`}><CheckCircle2 size={20} /> <span className="uppercase text-sm">Confirmar Reserva</span></button>
+                <button onClick={finalizarAgendamento} disabled={!horarioEscolhido} className={`w-full max-w-md p-5 flex items-center justify-center gap-3 rounded-xl transition-all ${horarioEscolhido ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_25px_rgba(212,175,55,0.25)]' : 'bg-[#1A1A1A] text-[#6F6F6F]'}`}><CheckCircle2 size={20} /> <span className="uppercase text-sm font-medium tracking-widest">Confirmar Reserva</span></button>
               </div>
             </div>
           )}
