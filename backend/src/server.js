@@ -11,7 +11,7 @@ app.use(express.json());
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// 🌟 AUTO-SINCRONIZADOR ATUALIZADO (AGORA COM A TABELA DE TICKETS)
+// 🌟 AUTO-SINCRONIZADOR
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -28,8 +28,6 @@ pool.connect().then(async () => {
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_nome VARCHAR(100);
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
-      
-      -- NOVA TABELA DE SUPORTE
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
     console.log('✅ Banco de dados sincronizado!');
@@ -81,19 +79,14 @@ app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, re
   catch (error) { res.status(500).json({ error: 'Erro' }); }
 });
 
-// 🌟 ROTAS DO SISTEMA DE TICKETS
 app.post('/api/tickets', verificarToken, async (req, res) => {
   try { await pool.query('INSERT INTO tickets (profissional_id, mensagem) VALUES ($1, $2)', [req.profissionalId, req.body.mensagem]); res.status(201).json({ message: 'Ticket aberto' }); } 
   catch(e) { res.status(500).json({ error: 'Erro ao abrir ticket' }); }
 });
-
 app.get('/api/ceo/tickets', verificarToken, verificarCEO, async (req, res) => {
-  try {
-    const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC");
-    res.json(result.rows);
-  } catch(e) { res.status(500).json({ error: 'Erro buscar tickets' }); }
+  try { const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC"); res.json(result.rows); } 
+  catch(e) { res.status(500).json({ error: 'Erro buscar tickets' }); }
 });
-
 app.delete('/api/ceo/tickets/:id', verificarToken, verificarCEO, async (req, res) => {
   try { await pool.query("UPDATE tickets SET status = 'resolvido' WHERE id = $1", [req.params.id]); res.json({ message: 'Ticket resolvido' }); } 
   catch(e) { res.status(500).json({ error: 'Erro fechar ticket' }); }
@@ -130,6 +123,27 @@ app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro concluir' }); }
 });
 
+// 🌟 NOVA ROTA: O CRM DO SALÃO (LISTA DE CLIENTES)
+app.get('/api/clientes', verificarToken, async (req, res) => {
+  try {
+    // Busca todos os clientes únicos deste salão e conta quantas vezes eles agendaram
+    const result = await pool.query(`
+      SELECT 
+        c.nome, 
+        c.whatsapp, 
+        MAX(a.data_criacao) as ultima_visita, 
+        COUNT(a.id) as total_visitas
+      FROM clientes c
+      LEFT JOIN agendamentos a ON c.whatsapp = a.cliente_whatsapp AND a.profissional_id = $1
+      WHERE c.profissional_id = $1
+      GROUP BY c.nome, c.whatsapp
+      ORDER BY ultima_visita DESC
+    `, [req.profissionalId]);
+    res.json(result.rows);
+  } catch (error) { res.status(500).json({ error: 'Erro ao buscar CRM' }); }
+});
+
+// ROTAS PÚBLICAS
 app.get('/api/public/profissional/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/api/public/servicos/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT * FROM servicos WHERE profissional_id = $1 ORDER BY id DESC', [req.params.id_profissional])).rows); } catch(e) { res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/funcionarios/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT id, nome FROM funcionarios WHERE salao_id = $1 ORDER BY id ASC', [req.params.id_profissional])).rows); } catch (error) { res.status(500).json({ error: 'Erro func' }); } });
@@ -141,10 +155,15 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
     const result = await pool.query(query, params); let ocupados = []; result.rows.forEach(r => { if(r.horario) ocupados = ocupados.concat(r.horario.split(',')); }); res.json(ocupados);
   } catch (error) { res.status(500).json({ error: 'Erro ocupados' }); }
 });
+
 app.post('/api/public/agendamentos', async (req, res) => {
   const { id_profissional, nome, whatsapp, nascimento, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome } = req.body;
   try {
-    await pool.query('INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)', [id_profissional, nome, whatsapp, nascimento]);
+    // 🌟 SE O CLIENTE JÁ EXISTIR, NÃO CRIA DUPLICADO. SE NÃO, INSERE.
+    const clienteExiste = await pool.query('SELECT id FROM clientes WHERE profissional_id = $1 AND whatsapp = $2', [id_profissional, whatsapp]);
+    if (clienteExiste.rows.length === 0) {
+      await pool.query('INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)', [id_profissional, nome, whatsapp, nascimento]);
+    }
     const result = await pool.query('INSERT INTO agendamentos (profissional_id, cliente_nome, cliente_whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id || null, funcionario_nome || null]);
     res.status(201).json(result.rows[0]);
   } catch (error) { console.error("ERRO GRAVE AO AGENDAR:", error); res.status(500).json({ error: 'Erro agendar' }); }
