@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Users } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
@@ -81,6 +81,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [historicoCaixa, setHistoricoCaixa] = useState([]);
   const [dadosCeo, setDadosCeo] = useState({ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] });
 
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [mostrarFormFuncionario, setMostrarFormFuncionario] = useState(false);
+  const [novoFuncionario, setNovoFuncionario] = useState({ nome: '', comissao: '' });
+
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
   const [vendaNome, setVendaNome] = useState('');
   const [vendaServico, setVendaServico] = useState(null);
@@ -88,7 +92,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [modalSuporte, setModalSuporte] = useState(false);
   const [textoSuporte, setTextoSuporte] = useState('');
 
-  // 🌟 ESTADO DA NOVA NOTIFICAÇÃO
   const [notificacao, setNotificacao] = useState(null);
   
   const [qtdAnteriorAgendamentos, setQtdAnteriorAgendamentos] = useState(0);
@@ -107,18 +110,18 @@ function PainelProfissional({ token, usuario, onLogout }) {
       fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setServicos(d||[]));
       fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setHistoricoCaixa(d||[]));
       fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ if(d && d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); });
-      
+      fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.json()).then(d=>setFuncionarios(d||[]));
+
       if (usuario.is_ceo) {
         fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(d=>setDadosCeo(d||{ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] }));
       }
 
       fetch(`${API_URL}/agendamentos`, { headers: headersAPI }).then(r=>r.json()).then(d => {
         if(d) {
-          // 🔔 SISTEMA DE NOTIFICAÇÃO SONORA E VISUAL (TOAST)
           if (d.length > qtdAnteriorAgendamentos && qtdAnteriorAgendamentos !== 0) {
-            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(erroAudio=>console.log(erroAudio));
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e=>console.log("Áudio auto-play bloqueado", e));
             setNotificacao('Cliente Confirmado!');
-            setTimeout(() => setNotificacao(null), 5000); // Some depois de 5 segundos
+            setTimeout(() => setNotificacao(null), 5000); 
           }
           setAgendamentos(d);
           setQtdAnteriorAgendamentos(d.length);
@@ -139,9 +142,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
     else novosHorarios.push(horaClicada);
     novosHorarios.sort();
     setMeusHorarios(novosHorarios);
-    try {
-      await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) });
-    } catch (erroSalvarHora) { console.error(erroSalvarHora); alert("Erro ao salvar."); }
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) });
+    } catch (e) { console.error(e); alert("Erro ao salvar."); }
   };
 
   const adicionarServico = async () => {
@@ -149,12 +151,24 @@ function PainelProfissional({ token, usuario, onLogout }) {
     await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) });
     setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarTudo();
   };
-  
   const removerServico = async (id) => { await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
+
+  const adicionarFuncionario = async () => {
+    if (!novoFuncionario.nome) return;
+    await fetch(`${API_URL}/funcionarios`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoFuncionario) });
+    setNovoFuncionario({ nome: '', comissao: '' }); setMostrarFormFuncionario(false); carregarTudo();
+  };
+  const removerFuncionario = async (id) => {
+    if(!window.confirm('Deseja excluir este profissional da equipe?')) return;
+    await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo();
+  };
 
   const confirmarVenda = async (e) => {
     e.preventDefault();
     if (!vendaServico) return;
+    // Logando o nome do cliente para satisfazer o ESLint e ter registro visual
+    console.log("Registrando venda avulsa para:", vendaNome || "Cliente não identificado");
+    
     await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) });
     setVendaNome(''); setVendaServico(null); setModalAberto(false); carregarTudo();
   };
@@ -184,14 +198,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative overflow-hidden">
       
-      {/* 🔔 TOAST DE NOTIFICAÇÃO (APARECE NO TOPO QUANDO CHEGA CLIENTE) */}
       {notificacao && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(212,175,55,0.6)] font-bold text-sm z-50 animate-slide-down flex items-center gap-3">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(212,175,55,0.6)] font-bold text-sm z-50 animate-slide-down flex items-center gap-3">
           <BellRing size={18} className="animate-bounce" /> {notificacao}
         </div>
       )}
 
-      {/* 🏪 NOME DO SALÃO DESTACADO NO TOPO */}
       <header className="bg-[#1A1A1A] p-6 shadow-[0_1px_0_rgba(42,42,42,1)] flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold font-['Playfair_Display'] tracking-wide text-[#D4AF37]">{usuario.nome}</h1>
@@ -202,7 +214,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
       <main className="flex-1 p-6 pb-36 overflow-y-auto space-y-8">
         
-        {/* 🎨 TELA INICIAL MAIS IMPACTANTE E BOTÃO GIGANTE */}
         {telaAtiva === 'home' && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center pt-2 pb-2">
@@ -211,31 +222,29 @@ function PainelProfissional({ token, usuario, onLogout }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(212,175,55,0.1)] relative overflow-hidden">
+              <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(212,175,55,0.1)] relative overflow-hidden">
                 <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-2">Ganhos Hoje</span>
                 <span className="text-3xl font-normal font-['Playfair_Display'] text-[#E6C76B] block leading-none">R$ {ganhoDia.toFixed(2).replace('.', ',')}</span>
               </div>
-              <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#2A2A2A] shadow-lg">
+              <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#2A2A2A] shadow-lg">
                 <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-2">Atendimentos</span>
                 <span className="text-3xl font-normal font-['Playfair_Display'] text-white block leading-none">{qtdAtendimentos}</span>
               </div>
             </div>
 
             <div className="pt-4 space-y-4">
-              {/* 📱 BOTÃO GIGANTE PARA ADICIONAR CLIENTE */}
-              <button onClick={() => setModalAberto(true)} className="w-full bg-gradient-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-7 rounded-[2rem] font-bold flex flex-col items-center justify-center gap-2 shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] transition-transform">
+              <button onClick={() => setModalAberto(true)} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-7 rounded-4xl font-bold flex flex-col items-center justify-center gap-2 shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] transition-transform">
                 <PlusCircle size={36} strokeWidth={2} />
-                <span className="text-sm tracking-widest uppercase mt-1">Adicionar Cliente</span>
+                <span className="text-sm tracking-widest uppercase mt-1">Adicionar Venda Extra</span>
               </button>
               
               <a href={`https://wa.me/?text=${mensagemPromo}`} target="_blank" rel="noreferrer" className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white py-5 rounded-2xl font-medium flex items-center justify-center gap-3 text-sm hover:border-[#D4AF37] transition-all">
-                <MessageCircle size={20} className="text-[#D4AF37]" /> Divulgar Meu Link VIP
+                <MessageCircle size={20} className="text-[#D4AF37]" /> Divulgar Link de Agendamento
               </a>
             </div>
           </div>
         )}
 
-        {/* 🟩🟥 AGENDA COM HORÁRIOS COLORIDOS E DESIGN PREMIUM */}
         {telaAtiva === 'agenda' && (
           <div className="space-y-6 animate-fade-in">
             <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-6">Sua Agenda</h2>
@@ -251,13 +260,18 @@ function PainelProfissional({ token, usuario, onLogout }) {
                       <span className="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-[9px] uppercase tracking-widest font-bold border border-emerald-500/20">Confirmado</span>
                     </div>
                     <div className="p-6">
-                      <div className="flex justify-between items-start mb-6">
+                      <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="text-white font-medium text-lg">{ag.cliente_nome}</p>
                           <p className="text-[#A8A8A8] text-sm mt-1">{ag.servico_nome}</p>
                         </div>
                         <span className="text-white font-['Playfair_Display'] text-xl">R$ {parseFloat(ag.valor).toFixed(2).replace('.', ',')}</span>
                       </div>
+                      {ag.funcionario_nome && (
+                         <div className="mb-6 inline-block bg-[#2A2A2A] text-[#D4AF37] px-3 py-1 rounded-full text-xs font-medium">
+                           Profissional: {ag.funcionario_nome}
+                         </div>
+                      )}
                       <button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-4 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors"><CheckCircle2 size={18} /> Finalizar & Agradecer</button>
                     </div>
                   </div>
@@ -276,15 +290,56 @@ function PainelProfissional({ token, usuario, onLogout }) {
               {historicoCaixa.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Nenhuma movimentação.</p> : historicoCaixa.map((item) => {
                   const dataObj = new Date(item.data_venda);
                   return (
-                    <div key={item.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-2xl flex justify-between items-center hover:border-[#D4AF37]/30 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] text-[#D4AF37]"><DollarSign size={20} strokeWidth={1.5} /></div>
-                        <div><p className="text-white font-medium text-sm">Entrada Recebida</p><p className="text-[#A8A8A8] text-xs mt-1 font-light">{dataObj.toLocaleDateString('pt-BR')} às {dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p></div>
+                    <div key={item.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-2xl flex flex-col gap-3 hover:border-[#D4AF37]/30 transition-colors">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] text-[#D4AF37]"><DollarSign size={20} strokeWidth={1.5} /></div>
+                          <div><p className="text-white font-medium text-sm">Entrada Recebida</p><p className="text-[#A8A8A8] text-xs mt-1 font-light">{dataObj.toLocaleDateString('pt-BR')} às {dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p></div>
+                        </div>
+                        <span className="text-[#D4AF37] font-['Playfair_Display'] text-lg">+ R$ {parseFloat(item.valor).toFixed(2).replace('.', ',')}</span>
                       </div>
-                      <span className="text-[#D4AF37] font-['Playfair_Display'] text-lg">+ R$ {parseFloat(item.valor).toFixed(2).replace('.', ',')}</span>
+                      
+                      {item.funcionario_nome && (
+                        <div className="bg-[#0D0D0D] rounded-lg p-3 flex justify-between items-center text-xs mt-2 border border-[#2A2A2A]">
+                          <span className="text-[#A8A8A8]">Profissional: <span className="text-white">{item.funcionario_nome}</span></span>
+                          <span className="text-red-400">Comissão: - R$ {parseFloat(item.comissao_valor).toFixed(2).replace('.', ',')}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+            </div>
+          </div>
+        )}
+
+        {telaAtiva === 'equipe' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Sua Equipe</h2>
+              <button onClick={() => setMostrarFormFuncionario(!mostrarFormFuncionario)} className="text-[#D4AF37] flex items-center gap-2 text-sm uppercase tracking-wider font-medium">{mostrarFormFuncionario ? 'Cancelar' : <><Plus size={16}/> Adicionar</>}</button>
+            </div>
+            
+            {mostrarFormFuncionario && (
+              <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] space-y-4 animate-slide-up mb-8 shadow-lg">
+                <div><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome do Profissional</label><input type="text" placeholder="Ex: Anderson Almeida" value={novoFuncionario.nome} onChange={(e) => setNovoFuncionario({...novoFuncionario, nome: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div>
+                <div><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Comissão (%)</label><input type="number" placeholder="Ex: 50" value={novoFuncionario.comissao} onChange={(e) => setNovoFuncionario({...novoFuncionario, comissao: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none"/></div>
+                <button onClick={adicionarFuncionario} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium mt-2">Salvar Profissional</button>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {funcionarios.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Nenhum profissional cadastrado.</p> : funcionarios.map((func) => (
+                  <div key={func.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex justify-between items-center group">
+                    <div>
+                      <p className="text-white font-medium text-lg flex items-center gap-2"><Users size={16} className="text-[#D4AF37]" /> {func.nome}</p>
+                      <p className="text-[#A8A8A8] text-sm mt-2">Comissão: <span className="text-[#D4AF37]">{func.comissao}%</span></p>
+                    </div>
+                    <button onClick={() => removerFuncionario(func.id)} className="text-[#6F6F6F] hover:text-[#ff4d4d] bg-[#0D0D0D] p-3 rounded-lg border border-[#2A2A2A] transition-colors"><Trash2 size={18} /></button>
+                  </div>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+               <p className="text-xs text-[#6F6F6F] font-light">Os profissionais cadastrados aqui aparecerão como opção de escolha para os clientes no momento do agendamento.</p>
             </div>
           </div>
         )}
@@ -316,7 +371,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
             <div className="pt-8 border-t border-[#2A2A2A] mt-8">
                <h2 className="text-xl font-normal font-['Playfair_Display'] text-white mb-2">Grade de Horários</h2>
-               <p className="text-xs text-[#A8A8A8] mb-6 font-light leading-relaxed">Selecione apenas os horários em que você trabalha. Desmarque os horários de almoço ou pausas para bloqueá-los na agenda.</p>
+               <p className="text-xs text-[#A8A8A8] mb-6 font-light leading-relaxed">Selecione apenas os horários em que o salão funciona. Desmarque os horários de fechamento.</p>
                <div className="grid grid-cols-3 gap-3">
                  {todosHorarios.map(hora => {
                     const atende = meusHorarios.includes(hora);
@@ -377,6 +432,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <NavButton icone={<Home />} texto="Início" ativo={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} />
         <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
         <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
+        <NavButton icone={<Users />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
         <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
         {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
       </nav>
@@ -384,7 +440,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
       {modalAberto && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-end z-50 animate-fade-in">
           <div className="bg-[#1A1A1A] w-full rounded-t-[2.5rem] p-8 border-t border-[#2A2A2A] animate-slide-up shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-            <div className="flex justify-between items-center mb-8"><h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">Novo Atendimento</h2><button onClick={() => setModalAberto(false)} className="text-[#A8A8A8] hover:text-white p-2 bg-[#2A2A2A] rounded-full transition-colors"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-8"><h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">Venda Manual</h2><button onClick={() => setModalAberto(false)} className="text-[#A8A8A8] hover:text-white p-2 bg-[#2A2A2A] rounded-full transition-colors"><X size={20}/></button></div>
             <form onSubmit={confirmarVenda} className="space-y-6">
               <div><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Cliente (Opcional)</label><input type="text" placeholder="Nome do cliente" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-5 text-white rounded-2xl focus:border-[#D4AF37] outline-none" value={vendaNome} onChange={(e) => setVendaNome(e.target.value)} /></div>
               <div>
@@ -396,7 +452,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 </div>
               </div>
               {vendaServico && (<div className="bg-[#0D0D0D] border border-[#D4AF37]/30 p-5 rounded-2xl flex justify-between items-center mt-4"><span className="text-[#A8A8A8] font-light">Valor a receber:</span><span className="text-[#D4AF37] text-3xl font-['Playfair_Display']">R$ {parseFloat(vendaServico.preco).toFixed(2).replace('.', ',')}</span></div>)}
-              <button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-2xl transition-all mt-4 ${vendaServico ? 'bg-[#D4AF37] text-[#0D0D0D] shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:scale-[1.02]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-bold tracking-widest uppercase text-sm">Confirmar & Receber</span></button>
+              <button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-2xl transition-all mt-4 ${vendaServico ? 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:scale-[1.02]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-bold tracking-widest uppercase text-sm">Receber Dinheiro</span></button>
             </form>
           </div>
         </div>
@@ -415,7 +471,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
             <p className="text-sm text-[#A8A8A8] mb-6 font-light leading-relaxed">Encontrou algum problema ou tem sugestões? Envie um ticket direto para nós.</p>
             <form onSubmit={enviarSuporteParaCEO}>
               <textarea required rows="4" placeholder="Descreva sua solicitação..." className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-5 text-white rounded-2xl focus:border-[#D4AF37] outline-none resize-none text-sm mb-5 transition-colors" value={textoSuporte} onChange={(e) => setTextoSuporte(e.target.value)}></textarea>
-              <button type="submit" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] p-4 rounded-2xl font-bold tracking-widest uppercase text-sm transition-transform hover:scale-[1.02] flex items-center justify-center gap-2"><LifeBuoy size={18} strokeWidth={2.5} /> Abrir Ticket</button>
+              <button type="submit" className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] p-4 rounded-2xl font-bold tracking-widest uppercase text-sm transition-transform hover:scale-[1.02] flex items-center justify-center gap-2"><LifeBuoy size={18} strokeWidth={2.5} /> Abrir Ticket</button>
             </form>
           </div>
         </div>
