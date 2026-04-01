@@ -11,7 +11,7 @@ app.use(express.json());
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// 🌟 AUTO-SINCRONIZADOR DO BANCO DE DADOS (Cria e conserta tabelas sozinho!)
+// 🌟 AUTO-SINCRONIZADOR ATUALIZADO (AGORA COM A TABELA DE TICKETS)
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -28,8 +28,11 @@ pool.connect().then(async () => {
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_nome VARCHAR(100);
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
+      
+      -- NOVA TABELA DE SUPORTE
+      CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
-    console.log('✅ Banco de dados 100% blindado e sincronizado!');
+    console.log('✅ Banco de dados sincronizado!');
   } catch (e) { console.error('Erro na sincronização:', e); }
 }).catch(err => console.error(err));
 
@@ -45,7 +48,6 @@ const verificarToken = (req, res, next) => {
 };
 const verificarCEO = (req, res, next) => { if (!req.isCeo) return res.status(403).json({ error: 'Acesso negado.' }); next(); };
 
-// ROTAS DE AUTENTICAÇÃO E CEO
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
   try {
@@ -69,35 +71,41 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => {
   try {
-    const empresas = await pool.query(`SELECT p.id, p.nome, p.email, p.telefone, COALESCE(SUM(v.valor), 0) as faturamento_total FROM profissionais p LEFT JOIN vendas v ON p.id = v.profissional_id WHERE p.is_ceo = FALSE GROUP BY p.id`);
+    const empresas = await pool.query(`SELECT p.id, p.nome, p.email, p.telefone, COALESCE(SUM(v.valor), 0) as faturamento_total FROM profissionais p LEFT JOIN vendas v ON p.id = v.profissional_id WHERE p.is_ceo = FALSE GROUP BY p.id ORDER BY p.data_cadastro DESC`);
     res.json({ totalEmpresas: empresas.rows.length, faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), empresas: empresas.rows });
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); }
 });
 
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => {
+  try { await pool.query('DELETE FROM profissionais WHERE id = $1 AND is_ceo = FALSE', [req.params.id]); res.json({ message: 'Excluído' }); } 
+  catch (error) { res.status(500).json({ error: 'Erro' }); }
+});
+
+// 🌟 ROTAS DO SISTEMA DE TICKETS
+app.post('/api/tickets', verificarToken, async (req, res) => {
+  try { await pool.query('INSERT INTO tickets (profissional_id, mensagem) VALUES ($1, $2)', [req.profissionalId, req.body.mensagem]); res.status(201).json({ message: 'Ticket aberto' }); } 
+  catch(e) { res.status(500).json({ error: 'Erro ao abrir ticket' }); }
+});
+
+app.get('/api/ceo/tickets', verificarToken, verificarCEO, async (req, res) => {
   try {
-    await pool.query('DELETE FROM profissionais WHERE id = $1 AND is_ceo = FALSE', [req.params.id]);
-    res.json({ message: 'Excluído' });
-  } catch (error) { res.status(500).json({ error: 'Erro' }); }
+    const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC");
+    res.json(result.rows);
+  } catch(e) { res.status(500).json({ error: 'Erro buscar tickets' }); }
+});
+
+app.delete('/api/ceo/tickets/:id', verificarToken, verificarCEO, async (req, res) => {
+  try { await pool.query("UPDATE tickets SET status = 'resolvido' WHERE id = $1", [req.params.id]); res.json({ message: 'Ticket resolvido' }); } 
+  catch(e) { res.status(500).json({ error: 'Erro fechar ticket' }); }
 });
 
 app.get('/api/dashboard', verificarToken, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]);
-    res.json({ ganhoDia: parseFloat(result.rows[0].ganho_dia), qtdAtendimentos: parseInt(result.rows[0].qtd_atendimentos) });
-  } catch (error) { res.status(500).json({ error: 'Erro dash' }); }
+  try { const result = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]); res.json({ ganhoDia: parseFloat(result.rows[0].ganho_dia), qtdAtendimentos: parseInt(result.rows[0].qtd_atendimentos) }); } catch (error) { res.status(500).json({ error: 'Erro dash' }); }
 });
 
-// ROTAS DO PAINEL
-app.get('/api/funcionarios', verificarToken, async (req, res) => {
-  try { res.json((await pool.query('SELECT * FROM funcionarios WHERE salao_id = $1 ORDER BY id DESC', [req.profissionalId])).rows); } catch (error) { res.status(500).json({ error: 'Erro' }); }
-});
-app.post('/api/funcionarios', verificarToken, async (req, res) => {
-  try { res.status(201).json((await pool.query('INSERT INTO funcionarios (salao_id, nome, comissao) VALUES ($1, $2, $3) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.comissao || 0)])).rows[0]); } catch (error) { res.status(500).json({ error: 'Erro' }); }
-});
-app.delete('/api/funcionarios/:id', verificarToken, async (req, res) => {
-  try { await pool.query('DELETE FROM funcionarios WHERE id = $1 AND salao_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removido' }); } catch (error) { res.status(500).json({ error: 'Erro' }); }
-});
+app.get('/api/funcionarios', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT * FROM funcionarios WHERE salao_id = $1 ORDER BY id DESC', [req.profissionalId])).rows); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/api/funcionarios', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO funcionarios (salao_id, nome, comissao) VALUES ($1, $2, $3) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.comissao || 0)])).rows[0]); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
+app.delete('/api/funcionarios/:id', verificarToken, async (req, res) => { try { await pool.query('DELETE FROM funcionarios WHERE id = $1 AND salao_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removido' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 
 app.get('/api/configuracoes', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT horarios_trabalho FROM profissionais WHERE id = $1', [req.profissionalId])).rows[0]); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/api/configuracoes', verificarToken, async (req, res) => { try { await pool.query('UPDATE profissionais SET horarios_trabalho = $1 WHERE id = $2', [req.body.horarios, req.profissionalId]); res.json({ message: 'Salvo' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -106,19 +114,10 @@ app.get('/api/servicos', verificarToken, async (req, res) => { try { res.json((a
 app.post('/api/servicos', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO servicos (profissional_id, nome, preco, tempo) VALUES ($1, $2, $3, $4) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.preco.replace(',', '.')), req.body.tempo])).rows[0]); } catch(e){ res.status(500).json({error:'erro'}); }});
 app.delete('/api/servicos/:id', verificarToken, async (req, res) => { try { await pool.query('DELETE FROM servicos WHERE id = $1 AND profissional_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removido' }); } catch(e){ res.status(500).json({error:'erro'}); }});
 
-app.get('/api/vendas', verificarToken, async (req, res) => { 
-  try { res.json((await pool.query('SELECT v.*, f.nome as funcionario_nome FROM vendas v LEFT JOIN funcionarios f ON v.funcionario_id = f.id WHERE v.profissional_id = $1 ORDER BY v.data_venda DESC LIMIT 50', [req.profissionalId])).rows); }
-  catch (error) { res.status(500).json({ error: 'Erro vendas' }); }
-});
-app.post('/api/vendas', verificarToken, async (req, res) => { 
-  try { res.status(201).json((await pool.query('INSERT INTO vendas (profissional_id, valor) VALUES ($1, $2) RETURNING *', [req.profissionalId, req.body.valor])).rows[0]); }
-  catch (error) { res.status(500).json({ error: 'Erro vender' }); }
-});
+app.get('/api/vendas', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT v.*, f.nome as funcionario_nome FROM vendas v LEFT JOIN funcionarios f ON v.funcionario_id = f.id WHERE v.profissional_id = $1 ORDER BY v.data_venda DESC LIMIT 50', [req.profissionalId])).rows); } catch (error) { res.status(500).json({ error: 'Erro vendas' }); } });
+app.post('/api/vendas', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO vendas (profissional_id, valor) VALUES ($1, $2) RETURNING *', [req.profissionalId, req.body.valor])).rows[0]); } catch (error) { res.status(500).json({ error: 'Erro vender' }); } });
 
-app.get('/api/agendamentos', verificarToken, async (req, res) => { 
-  try { res.json((await pool.query("SELECT * FROM agendamentos WHERE profissional_id = $1 AND status = 'pendente' ORDER BY id ASC", [req.profissionalId])).rows); }
-  catch (error) { res.status(500).json({ error: 'Erro agenda' }); }
-});
+app.get('/api/agendamentos', verificarToken, async (req, res) => { try { res.json((await pool.query("SELECT * FROM agendamentos WHERE profissional_id = $1 AND status = 'pendente' ORDER BY id ASC", [req.profissionalId])).rows); } catch (error) { res.status(500).json({ error: 'Erro agenda' }); } });
 app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
   try {
     const agenda = await pool.query('SELECT valor, funcionario_id FROM agendamentos WHERE id = $1 AND profissional_id = $2', [req.params.id, req.profissionalId]);
@@ -131,19 +130,15 @@ app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro concluir' }); }
 });
 
-// ROTAS PÚBLICAS
 app.get('/api/public/profissional/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/api/public/servicos/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT * FROM servicos WHERE profissional_id = $1 ORDER BY id DESC', [req.params.id_profissional])).rows); } catch(e) { res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/funcionarios/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT id, nome FROM funcionarios WHERE salao_id = $1 ORDER BY id ASC', [req.params.id_profissional])).rows); } catch (error) { res.status(500).json({ error: 'Erro func' }); } });
 app.get('/api/public/historico/:id_profissional/:whatsapp', async (req, res) => { try { const result = await pool.query(`SELECT servico_nome FROM agendamentos WHERE profissional_id = $1 AND cliente_whatsapp = $2 ORDER BY data_criacao DESC LIMIT 1`, [req.params.id_profissional, req.params.whatsapp]); res.json({ ultimoServico: result.rows.length > 0 ? result.rows[0].servico_nome : null }); } catch(e){ res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
   try {
-    let query = "SELECT horario FROM agendamentos WHERE profissional_id = $1 AND data_reserva = $2 AND status != 'cancelado'";
-    let params = [req.params.id_profissional, req.query.data];
+    let query = "SELECT horario FROM agendamentos WHERE profissional_id = $1 AND data_reserva = $2 AND status != 'cancelado'"; let params = [req.params.id_profissional, req.query.data];
     if (req.query.funcionario_id) { query += " AND (funcionario_id = $3 OR funcionario_id IS NULL)"; params.push(req.query.funcionario_id); }
-    const result = await pool.query(query, params);
-    let ocupados = []; result.rows.forEach(r => { if(r.horario) ocupados = ocupados.concat(r.horario.split(',')); });
-    res.json(ocupados);
+    const result = await pool.query(query, params); let ocupados = []; result.rows.forEach(r => { if(r.horario) ocupados = ocupados.concat(r.horario.split(',')); }); res.json(ocupados);
   } catch (error) { res.status(500).json({ error: 'Erro ocupados' }); }
 });
 app.post('/api/public/agendamentos', async (req, res) => {
