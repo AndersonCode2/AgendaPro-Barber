@@ -5,6 +5,7 @@ import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Tra
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
+const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_1_de_abr._de_2026_17_35_15_fanupb';
 
 function TelaAuth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,7 +38,12 @@ function TelaAuth({ onLogin }) {
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex flex-col justify-center items-center p-6 font-['Inter']">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
-        <div className="text-center mb-10"><h1 className="text-5xl font-normal font-['Playfair_Display'] text-[#D4AF37] tracking-widest">AURUM</h1></div>
+        
+        {/* 🌟 LOGO AURUM NA TELA DE LOGIN */}
+        <div className="text-center mb-8 flex flex-col items-center">
+          <img src={LOGO_AURUM} alt="AURUM Logo" className="w-40 h-40 rounded-3xl object-cover shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30" />
+        </div>
+
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
           <h2 className="text-2xl text-white font-['Playfair_Display'] mb-6 text-center">{isLogin ? 'Acesse seu espaço' : 'Crie sua exclusividade'}</h2>
           {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
@@ -335,7 +341,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
                    {meuLogo ? <img src={meuLogo} alt="Logo" className="w-full h-full object-cover" /> : <span className="text-xs text-[#6F6F6F]">Sem Logo</span>}
                  </div>
                  <div className="flex-1">
-                   {/* CORREÇÃO DO CONFLITO DE CSS AQUI (max-w-50) */}
                    <label className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-3 rounded-xl text-sm cursor-pointer hover:border-[#D4AF37] transition-colors flex items-center justify-center gap-2 max-w-50">
                       <UploadCloud size={18} className="text-[#D4AF37]"/> Escolher Imagem
                       <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />

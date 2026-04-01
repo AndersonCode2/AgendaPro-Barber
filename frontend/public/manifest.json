@@ -8,9 +8,9 @@
   "theme_color": "#0D0D0D",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/7590/7590814.png",
+      "src": "https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_1_de_abr._de_2026_17_35_15_fanupb",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
