@@ -98,7 +98,6 @@ export default function PaginaCliente() {
         funcionario_id: funcionarioEscolhido?.id || null, funcionario_nome: funcionarioEscolhido?.nome || null
       };
 
-      // 🛡️ A TRAVA DE SEGURANÇA: SÓ ABRE O WHATSAPP SE O BANCO CONFIRMAR
       const res = await fetch(`${API_URL}/public/agendamentos`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
@@ -120,9 +119,19 @@ export default function PaginaCliente() {
   return (
     <div className="min-h-screen bg-[#080808] flex justify-center text-white font-['Inter']">
       <div className="w-full max-w-md bg-[#0D0D0D] min-h-screen relative flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-        <header className="p-6 text-center border-b border-[#2A2A2A] bg-[#0D0D0D]/90 backdrop-blur-md sticky top-0 z-10"><button onClick={voltarEtapa} className="absolute left-6 top-7 text-[#A8A8A8] hover:text-[#D4AF37] flex items-center gap-2 text-sm transition-colors"><ArrowLeft size={16} /> {etapa > 1 ? 'Voltar' : 'Sair'}</button><h1 className="text-2xl font-['Playfair_Display'] tracking-widest text-[#D4AF37] uppercase">{dadosProfissional?.nome || 'AURUM'}</h1></header>
-        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-36 relative">
+        
+        {/* CORREÇÃO DO CONFLITO DE CSS: "relative" REMOVIDO DA CLASSE ABAIXO */}
+        <header className="p-6 border-b border-[#2A2A2A] bg-[#0D0D0D]/90 backdrop-blur-md sticky top-0 z-10 flex flex-col items-center justify-center">
+          <button onClick={voltarEtapa} className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[#A8A8A8] hover:text-[#D4AF37] flex items-center gap-2 text-sm transition-colors"><ArrowLeft size={16} /> {etapa > 1 ? 'Voltar' : 'Sair'}</button>
           
+          {dadosProfissional?.logo_url ? (
+            <img src={dadosProfissional.logo_url} alt="Logo" className="w-16 h-16 rounded-full object-cover border-2 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.3)] mb-2" />
+          ) : null}
+          
+          <h1 className="text-xl font-['Playfair_Display'] tracking-widest text-[#D4AF37] uppercase text-center">{dadosProfissional?.nome || 'AURUM'}</h1>
+        </header>
+        
+        <main className="flex-1 p-6 w-full flex flex-col justify-start animate-fade-in pb-36 relative">
           {etapa === 1 && (
             <div className="space-y-10 animate-slide-up mt-8">
               <div className="text-center space-y-3"><h2 className="text-4xl font-normal font-['Playfair_Display'] text-white">Bem-vindo(a).</h2></div>

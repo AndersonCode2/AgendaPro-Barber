@@ -7,17 +7,18 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Aumentei o limite para receber a imagem em base64
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// 🌟 AUTO-SINCRONIZADOR
+// 🌟 AUTO-SINCRONIZADOR COM A NOVA COLUNA DE LOGO
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS profissionais (id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, senha VARCHAR(255) NOT NULL, telefone VARCHAR(20), is_ceo BOOLEAN DEFAULT FALSE, data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS horarios_trabalho TEXT DEFAULT '08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00';
+      ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS logo_url TEXT;
       CREATE TABLE IF NOT EXISTS servicos (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, preco DECIMAL(10,2) NOT NULL, tempo VARCHAR(50));
       CREATE TABLE IF NOT EXISTS clientes (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, whatsapp VARCHAR(20), nascimento VARCHAR(20), data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS vendas (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, valor DECIMAL(10,2) NOT NULL, data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -30,7 +31,7 @@ pool.connect().then(async () => {
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
-    console.log('✅ Banco de dados sincronizado!');
+    console.log('✅ Banco de dados sincronizado e pronto para Logos!');
   } catch (e) { console.error('Erro na sincronização:', e); }
 }).catch(err => console.error(err));
 
@@ -100,8 +101,18 @@ app.get('/api/funcionarios', verificarToken, async (req, res) => { try { res.jso
 app.post('/api/funcionarios', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO funcionarios (salao_id, nome, comissao) VALUES ($1, $2, $3) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.comissao || 0)])).rows[0]); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/api/funcionarios/:id', verificarToken, async (req, res) => { try { await pool.query('DELETE FROM funcionarios WHERE id = $1 AND salao_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removido' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 
-app.get('/api/configuracoes', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT horarios_trabalho FROM profissionais WHERE id = $1', [req.profissionalId])).rows[0]); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/api/configuracoes', verificarToken, async (req, res) => { try { await pool.query('UPDATE profissionais SET horarios_trabalho = $1 WHERE id = $2', [req.body.horarios, req.profissionalId]); res.json({ message: 'Salvo' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+// 🌟 ROTAS DE CONFIGURAÇÃO (AGORA SALVANDO A LOGO)
+app.get('/api/configuracoes', verificarToken, async (req, res) => { 
+  try { res.json((await pool.query('SELECT horarios_trabalho, logo_url FROM profissionais WHERE id = $1', [req.profissionalId])).rows[0]); } 
+  catch (e) { res.status(500).json({ error: 'Erro' }); } 
+});
+app.post('/api/configuracoes', verificarToken, async (req, res) => { 
+  try { 
+    // Atualiza horários e o logo_url
+    await pool.query('UPDATE profissionais SET horarios_trabalho = $1, logo_url = COALESCE($2, logo_url) WHERE id = $3', [req.body.horarios, req.body.logo_url, req.profissionalId]); 
+    res.json({ message: 'Salvo' }); 
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Erro' }); } 
+});
 
 app.get('/api/servicos', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT * FROM servicos WHERE profissional_id = $1 ORDER BY id DESC', [req.profissionalId])).rows); } catch(e){ res.status(500).json({error: 'erro'}); } });
 app.post('/api/servicos', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO servicos (profissional_id, nome, preco, tempo) VALUES ($1, $2, $3, $4) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.preco.replace(',', '.')), req.body.tempo])).rows[0]); } catch(e){ res.status(500).json({error:'erro'}); }});
@@ -123,28 +134,18 @@ app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Erro concluir' }); }
 });
 
-// 🌟 NOVA ROTA: O CRM DO SALÃO (LISTA DE CLIENTES)
 app.get('/api/clientes', verificarToken, async (req, res) => {
   try {
-    // Busca todos os clientes únicos deste salão e conta quantas vezes eles agendaram
-    const result = await pool.query(`
-      SELECT 
-        c.nome, 
-        c.whatsapp, 
-        MAX(a.data_criacao) as ultima_visita, 
-        COUNT(a.id) as total_visitas
-      FROM clientes c
-      LEFT JOIN agendamentos a ON c.whatsapp = a.cliente_whatsapp AND a.profissional_id = $1
-      WHERE c.profissional_id = $1
-      GROUP BY c.nome, c.whatsapp
-      ORDER BY ultima_visita DESC
-    `, [req.profissionalId]);
+    const result = await pool.query(`SELECT c.nome, c.whatsapp, MAX(a.data_criacao) as ultima_visita, COUNT(a.id) as total_visitas FROM clientes c LEFT JOIN agendamentos a ON c.whatsapp = a.cliente_whatsapp AND a.profissional_id = $1 WHERE c.profissional_id = $1 GROUP BY c.nome, c.whatsapp ORDER BY ultima_visita DESC`, [req.profissionalId]);
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: 'Erro ao buscar CRM' }); }
 });
 
-// ROTAS PÚBLICAS
-app.get('/api/public/profissional/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
+// 🌟 ROTAS PÚBLICAS (AGORA ENVIAM A LOGO PARA O CLIENTE FINAL)
+app.get('/api/public/profissional/:id_profissional', async (req, res) => { 
+  try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho, logo_url FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } 
+  catch (error) { res.status(500).json({ error: 'Erro' }); } 
+});
 app.get('/api/public/servicos/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT * FROM servicos WHERE profissional_id = $1 ORDER BY id DESC', [req.params.id_profissional])).rows); } catch(e) { res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/funcionarios/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT id, nome FROM funcionarios WHERE salao_id = $1 ORDER BY id ASC', [req.params.id_profissional])).rows); } catch (error) { res.status(500).json({ error: 'Erro func' }); } });
 app.get('/api/public/historico/:id_profissional/:whatsapp', async (req, res) => { try { const result = await pool.query(`SELECT servico_nome FROM agendamentos WHERE profissional_id = $1 AND cliente_whatsapp = $2 ORDER BY data_criacao DESC LIMIT 1`, [req.params.id_profissional, req.params.whatsapp]); res.json({ ultimoServico: result.rows.length > 0 ? result.rows[0].servico_nome : null }); } catch(e){ res.status(500).json({ error: 'erro' }); } });
@@ -159,11 +160,8 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
 app.post('/api/public/agendamentos', async (req, res) => {
   const { id_profissional, nome, whatsapp, nascimento, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome } = req.body;
   try {
-    // 🌟 SE O CLIENTE JÁ EXISTIR, NÃO CRIA DUPLICADO. SE NÃO, INSERE.
     const clienteExiste = await pool.query('SELECT id FROM clientes WHERE profissional_id = $1 AND whatsapp = $2', [id_profissional, whatsapp]);
-    if (clienteExiste.rows.length === 0) {
-      await pool.query('INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)', [id_profissional, nome, whatsapp, nascimento]);
-    }
+    if (clienteExiste.rows.length === 0) { await pool.query('INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)', [id_profissional, nome, whatsapp, nascimento]); }
     const result = await pool.query('INSERT INTO agendamentos (profissional_id, cliente_nome, cliente_whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id || null, funcionario_nome || null]);
     res.status(201).json(result.rows[0]);
   } catch (error) { console.error("ERRO GRAVE AO AGENDAR:", error); res.status(500).json({ error: 'Erro agendar' }); }

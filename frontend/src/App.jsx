@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
@@ -74,12 +74,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [dadosCeo, setDadosCeo] = useState({ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] });
 
   const [ticketsSuporte, setTicketsSuporte] = useState([]);
-
   const [funcionarios, setFuncionarios] = useState([]);
   const [mostrarFormFuncionario, setMostrarFormFuncionario] = useState(false);
   const [novoFuncionario, setNovoFuncionario] = useState({ nome: '', comissao: '' });
-
-  // 🌟 ESTADO DO CRM (LISTA DE CLIENTES)
   const [listaClientes, setListaClientes] = useState([]);
 
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
@@ -93,6 +90,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
   
   const todosHorarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
   const [meusHorarios, setMeusHorarios] = useState([]);
+  
+  const [meuLogo, setMeuLogo] = useState(null);
+  const [salvandoConfig, setSalvandoConfig] = useState(false);
 
   const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   const linkCliente = `${linkBase}/agendar/${usuario.id}`;
@@ -106,10 +106,14 @@ function PainelProfissional({ token, usuario, onLogout }) {
       fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setServicos(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setHistoricoCaixa(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setFuncionarios(Array.isArray(d) ? d : []));
-      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error && d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); });
-      
-      // 🌟 PUXANDO OS CLIENTES DO CRM
       fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setListaClientes(Array.isArray(d) ? d : []));
+      
+      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ 
+        if(d && !d.error) {
+          if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(','));
+          if(d.logo_url) setMeuLogo(d.logo_url);
+        }
+      });
 
       if (usuario.is_ceo) {
         fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) setDadosCeo(d); });
@@ -130,12 +134,46 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   useEffect(() => { carregarTudo(); const intervalo = setInterval(carregarTudo, 30000); return () => clearInterval(intervalo); }, []);
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 250; const MAX_HEIGHT = 250;
+        let width = img.width; let height = img.height;
+        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setMeuLogo(dataUrl);
+      }
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const salvarMeusHorarios = async (horaClicada) => {
     let novosHorarios = [...meusHorarios];
     if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
     novosHorarios.sort(); setMeusHorarios(novosHorarios);
-    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
+    setSalvandoConfig(true);
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
+    setSalvandoConfig(false);
   };
+
+  const salvarApenasLogo = async () => {
+    setSalvandoConfig(true);
+    try { 
+      await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo }) }); 
+      alert("Logo atualizada com sucesso!");
+    } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
+    setSalvandoConfig(false);
+  }
 
   const adicionarServico = async () => {
     if (!novoServico.nome || !novoServico.preco) return;
@@ -156,7 +194,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const confirmarVenda = async (e) => {
     e.preventDefault(); if (!vendaServico) return;
-    console.log("Venda avulsa:", vendaNome);
+    console.log("Venda avulsa registrada para:", vendaNome || "Sem nome");
     await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) });
     setVendaNome(''); setVendaServico(null); setModalAberto(false); carregarTudo();
   };
@@ -166,13 +204,13 @@ function PainelProfissional({ token, usuario, onLogout }) {
     carregarTudo();
     if (agendamento.cliente_whatsapp) {
       const num = agendamento.cliente_whatsapp.replace(/\D/g, '');
-      const txt = `✨ Olá, ${agendamento.cliente_nome.split(' ')[0]}! Aqui é do ${usuario.nome}.\n\nPassando para agradecer pela sua visita hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
+      const txt = `✨ Olá, ${agendamento.cliente_nome.split(' ')[0]}! Aqui é do ${usuario.nome}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
       window.open(`https://wa.me/55${num}?text=${encodeURIComponent(txt)}`, '_blank');
     }
   };
 
   const excluirEmpresa = async (id, nomeEmpresa) => {
-    if (!window.confirm(`⚠️ Tem certeza que deseja excluir o salão "${nomeEmpresa}"?`)) return;
+    if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir permanentemente o salão "${nomeEmpresa}"?\nTodos os dados, serviços e faturamento deles serão apagados.`)) return;
     const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI });
     if (res.ok) { alert("Removido com sucesso."); carregarTudo(); } else { alert("Erro ao excluir."); }
   };
@@ -190,7 +228,13 @@ function PainelProfissional({ token, usuario, onLogout }) {
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative overflow-hidden">
       {notificacao && (<div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(212,175,55,0.6)] font-bold text-sm z-50 animate-slide-down flex items-center gap-3"><BellRing size={18} className="animate-bounce" /> {notificacao}</div>)}
       <header className="bg-[#1A1A1A] p-6 shadow-[0_1px_0_rgba(42,42,42,1)] flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
-        <div className="flex flex-col"><h1 className="text-2xl font-bold font-['Playfair_Display'] tracking-wide text-[#D4AF37]">{usuario.nome}</h1><p className="text-[10px] tracking-widest text-[#A8A8A8] mt-1 uppercase">{usuario.is_ceo ? '⚡ PAINEL MASTER' : `SISTEMA AURUM`}</p></div>
+        <div className="flex items-center gap-4">
+          {meuLogo && <img src={meuLogo} alt="Logo" className="w-12 h-12 rounded-full object-cover border border-[#D4AF37]" />}
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-bold font-['Playfair_Display'] tracking-wide text-[#D4AF37]">{usuario.nome}</h1>
+            <p className="text-[10px] tracking-widest text-[#A8A8A8] mt-1 uppercase">{usuario.is_ceo ? '⚡ PAINEL MASTER' : `SISTEMA AURUM`}</p>
+          </div>
+        </div>
         <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] bg-[#0D0D0D] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center"><LogOut size={16} /></button>
       </header>
 
@@ -199,7 +243,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
           <div className="space-y-8 animate-fade-in">
             <div className="text-center pt-2 pb-2"><h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">Visão Geral</h2></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#D4AF37]/30 shadow-lg"><span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-2">Ganhos Hoje</span><span className="text-3xl font-normal font-['Playfair_Display'] text-[#E6C76B] block leading-none">R$ {ganhoDia.toFixed(2).replace('.', ',')}</span></div>
+              <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(212,175,55,0.1)] relative overflow-hidden"><span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-2">Ganhos Hoje</span><span className="text-3xl font-normal font-['Playfair_Display'] text-[#E6C76B] block leading-none">R$ {ganhoDia.toFixed(2).replace('.', ',')}</span></div>
               <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#2A2A2A] shadow-lg"><span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-2">Atendimentos</span><span className="text-3xl font-normal font-['Playfair_Display'] text-white block leading-none">{qtdAtendimentos}</span></div>
             </div>
             <div className="pt-4 space-y-4">
@@ -244,14 +288,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
           </div>
         )}
 
-        {/* 🌟 NOVA ABA: CLIENTES (CRM) */}
         {telaAtiva === 'clientes' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Meus Clientes</h2>
-              <span className="text-[#D4AF37] text-sm uppercase tracking-wider font-medium">{listaClientes.length} Total</span>
-            </div>
-            
+            <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Meus Clientes</h2><span className="text-[#D4AF37] text-sm uppercase tracking-wider font-medium">{listaClientes.length} Total</span></div>
             <div className="space-y-4">
               {listaClientes.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Sua lista de clientes está vazia.</p> : listaClientes.map((cliente, idx) => {
                   const dataUltimaVisita = cliente.ultima_visita ? new Date(cliente.ultima_visita).toLocaleDateString('pt-BR') : 'Nunca';
@@ -259,19 +298,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
                   const saudacao = encodeURIComponent(`Olá ${cliente.nome.split(' ')[0]}! Tudo bem? Faz um tempinho que não te vemos no ${usuario.nome}. Que tal agendar um horário hoje? ✨`);
                   return (
                     <div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col gap-4 shadow-md hover:border-[#D4AF37]/30 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-white font-medium text-lg">{cliente.nome}</p>
-                          <p className="text-[#A8A8A8] text-xs mt-1">{cliente.whatsapp}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{cliente.total_visitas} Visitas</span>
-                        </div>
-                      </div>
-                      <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] flex justify-between items-center">
-                        <span className="text-xs text-[#6F6F6F]">Última visita: <span className="text-white">{dataUltimaVisita}</span></span>
-                        <a href={`https://wa.me/55${numeroFormatado}?text=${saudacao}`} target="_blank" rel="noreferrer" className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Enviar Promoção</a>
-                      </div>
+                      <div className="flex justify-between items-start"><div><p className="text-white font-medium text-lg">{cliente.nome}</p><p className="text-[#A8A8A8] text-xs mt-1">{cliente.whatsapp}</p></div><div className="text-right"><span className="bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{cliente.total_visitas} Visitas</span></div></div>
+                      <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] flex justify-between items-center"><span className="text-xs text-[#6F6F6F]">Última visita: <span className="text-white">{dataUltimaVisita}</span></span><a href={`https://wa.me/55${numeroFormatado}?text=${saudacao}`} target="_blank" rel="noreferrer" className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Enviar Promoção</a></div>
                     </div>
                   );
               })}
@@ -299,6 +327,28 @@ function PainelProfissional({ token, usuario, onLogout }) {
         
         {telaAtiva === 'config' && (
           <div className="space-y-6 animate-fade-in">
+            <div className="mb-10 pb-8 border-b border-[#2A2A2A]">
+               <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-2">Sua Marca</h2>
+               <p className="text-xs text-[#A8A8A8] mb-6 font-light">Faça upload da logo do seu salão para ela aparecer na tela de agendamento dos seus clientes.</p>
+               <div className="flex items-center gap-6">
+                 <div className="w-24 h-24 rounded-full border-2 border-dashed border-[#D4AF37]/50 flex items-center justify-center bg-[#0D0D0D] overflow-hidden">
+                   {meuLogo ? <img src={meuLogo} alt="Logo" className="w-full h-full object-cover" /> : <span className="text-xs text-[#6F6F6F]">Sem Logo</span>}
+                 </div>
+                 <div className="flex-1">
+                   {/* CORREÇÃO DO CONFLITO DE CSS AQUI (max-w-50) */}
+                   <label className="bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-3 rounded-xl text-sm cursor-pointer hover:border-[#D4AF37] transition-colors flex items-center justify-center gap-2 max-w-50">
+                      <UploadCloud size={18} className="text-[#D4AF37]"/> Escolher Imagem
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                   </label>
+                   {meuLogo && (
+                     <button onClick={salvarApenasLogo} disabled={salvandoConfig} className="mt-3 text-sm text-[#D4AF37] font-bold tracking-widest uppercase">
+                       {salvandoConfig ? 'Salvando...' : 'Salvar Logo'}
+                     </button>
+                   )}
+                 </div>
+               </div>
+            </div>
+
             <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Menu de Experiências</h2><button onClick={() => setMostrarFormServico(!mostrarFormServico)} className="text-[#D4AF37] flex items-center gap-2 text-sm uppercase tracking-wider font-medium">{mostrarFormServico ? 'Cancelar' : <><Plus size={16}/> Adicionar</>}</button></div>
             {mostrarFormServico && (
               <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] space-y-4 animate-slide-up mb-8 shadow-lg">
@@ -369,11 +419,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
       <nav className="bg-[#1A1A1A] border-t border-[#2A2A2A] fixed bottom-0 w-full flex justify-around p-3 pb-safe z-10">
         <NavButton icone={<Home />} texto="Início" ativo={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} />
         <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
-        
-        {/* 🌟 BOTÃO NOVO: CLIENTES */}
+        <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
         <NavButton icone={<UsersRound />} texto="Clientes" ativo={telaAtiva === 'clientes'} onClick={() => setTelaAtiva('clientes')} />
-        
-        {/* O botão da Equipe virou uma Maleta (Briefcase) */}
         <NavButton icone={<Briefcase />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
         <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
         {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
