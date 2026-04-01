@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Users } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
@@ -73,12 +73,14 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [historicoCaixa, setHistoricoCaixa] = useState([]);
   const [dadosCeo, setDadosCeo] = useState({ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] });
 
-  // 🌟 ESTADO DOS TICKETS DO CEO
   const [ticketsSuporte, setTicketsSuporte] = useState([]);
 
   const [funcionarios, setFuncionarios] = useState([]);
   const [mostrarFormFuncionario, setMostrarFormFuncionario] = useState(false);
   const [novoFuncionario, setNovoFuncionario] = useState({ nome: '', comissao: '' });
+
+  // 🌟 ESTADO DO CRM (LISTA DE CLIENTES)
+  const [listaClientes, setListaClientes] = useState([]);
 
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
   const [vendaNome, setVendaNome] = useState('');
@@ -106,6 +108,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
       fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setFuncionarios(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error && d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); });
       
+      // 🌟 PUXANDO OS CLIENTES DO CRM
+      fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setListaClientes(Array.isArray(d) ? d : []));
+
       if (usuario.is_ceo) {
         fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) setDadosCeo(d); });
         fetch(`${API_URL}/ceo/tickets`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setTicketsSuporte(Array.isArray(d) ? d : []));
@@ -129,12 +134,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
     let novosHorarios = [...meusHorarios];
     if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
     novosHorarios.sort(); setMeusHorarios(novosHorarios);
-    try { 
-      await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) }); 
-    } catch (e) { 
-      console.error(e); 
-      alert("Erro ao salvar."); 
-    }
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(',') }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
   };
 
   const adicionarServico = async () => {
@@ -179,18 +179,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const enviarSuporteParaCEO = async (e) => {
     e.preventDefault();
-    try {
-      await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) });
-    } catch(err) { console.error("Falha ao salvar ticket", err); }
-
+    try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error("Falha ao salvar ticket", err); }
     window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank');
     setModalSuporte(false); setTextoSuporte('');
   };
 
-  const resolverTicket = async (id) => {
-    await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI });
-    carregarTudo();
-  };
+  const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative overflow-hidden">
@@ -250,6 +244,41 @@ function PainelProfissional({ token, usuario, onLogout }) {
           </div>
         )}
 
+        {/* 🌟 NOVA ABA: CLIENTES (CRM) */}
+        {telaAtiva === 'clientes' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Meus Clientes</h2>
+              <span className="text-[#D4AF37] text-sm uppercase tracking-wider font-medium">{listaClientes.length} Total</span>
+            </div>
+            
+            <div className="space-y-4">
+              {listaClientes.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Sua lista de clientes está vazia.</p> : listaClientes.map((cliente, idx) => {
+                  const dataUltimaVisita = cliente.ultima_visita ? new Date(cliente.ultima_visita).toLocaleDateString('pt-BR') : 'Nunca';
+                  const numeroFormatado = cliente.whatsapp?.replace(/\D/g, '');
+                  const saudacao = encodeURIComponent(`Olá ${cliente.nome.split(' ')[0]}! Tudo bem? Faz um tempinho que não te vemos no ${usuario.nome}. Que tal agendar um horário hoje? ✨`);
+                  return (
+                    <div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col gap-4 shadow-md hover:border-[#D4AF37]/30 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white font-medium text-lg">{cliente.nome}</p>
+                          <p className="text-[#A8A8A8] text-xs mt-1">{cliente.whatsapp}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{cliente.total_visitas} Visitas</span>
+                        </div>
+                      </div>
+                      <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] flex justify-between items-center">
+                        <span className="text-xs text-[#6F6F6F]">Última visita: <span className="text-white">{dataUltimaVisita}</span></span>
+                        <a href={`https://wa.me/55${numeroFormatado}?text=${saudacao}`} target="_blank" rel="noreferrer" className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Enviar Promoção</a>
+                      </div>
+                    </div>
+                  );
+              })}
+            </div>
+          </div>
+        )}
+
         {telaAtiva === 'equipe' && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Sua Equipe</h2><button onClick={() => setMostrarFormFuncionario(!mostrarFormFuncionario)} className="text-[#D4AF37] flex items-center gap-2 text-sm uppercase tracking-wider font-medium">{mostrarFormFuncionario ? 'Cancelar' : <><Plus size={16}/> Adicionar</>}</button></div>
@@ -262,7 +291,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
             )}
             <div className="space-y-4">
               {funcionarios.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Nenhum profissional cadastrado.</p> : funcionarios.map((func) => (
-                  <div key={func.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex justify-between items-center"><div className="flex flex-col gap-1"><p className="text-white font-medium text-lg flex items-center gap-2"><Users size={16} className="text-[#D4AF37]" /> {func.nome}</p><p className="text-[#A8A8A8] text-sm">Comissão: <span className="text-[#D4AF37]">{func.comissao}%</span></p></div><button onClick={() => removerFuncionario(func.id)} className="text-[#6F6F6F] hover:text-[#ff4d4d] bg-[#0D0D0D] p-3 rounded-lg border border-[#2A2A2A] transition-colors"><Trash2 size={18} /></button></div>
+                  <div key={func.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex justify-between items-center"><div className="flex flex-col gap-1"><p className="text-white font-medium text-lg flex items-center gap-2"><Briefcase size={16} className="text-[#D4AF37]" /> {func.nome}</p><p className="text-[#A8A8A8] text-sm">Comissão: <span className="text-[#D4AF37]">{func.comissao}%</span></p></div><button onClick={() => removerFuncionario(func.id)} className="text-[#6F6F6F] hover:text-[#ff4d4d] bg-[#0D0D0D] p-3 rounded-lg border border-[#2A2A2A] transition-colors"><Trash2 size={18} /></button></div>
               ))}
             </div>
           </div>
@@ -340,8 +369,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
       <nav className="bg-[#1A1A1A] border-t border-[#2A2A2A] fixed bottom-0 w-full flex justify-around p-3 pb-safe z-10">
         <NavButton icone={<Home />} texto="Início" ativo={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} />
         <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
-        <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
-        <NavButton icone={<Users />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
+        
+        {/* 🌟 BOTÃO NOVO: CLIENTES */}
+        <NavButton icone={<UsersRound />} texto="Clientes" ativo={telaAtiva === 'clientes'} onClick={() => setTelaAtiva('clientes')} />
+        
+        {/* O botão da Equipe virou uma Maleta (Briefcase) */}
+        <NavButton icone={<Briefcase />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
         <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
         {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
       </nav>
