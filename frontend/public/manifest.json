@@ -1,0 +1,16 @@
+{
+  "name": "AURUM Premium",
+  "short_name": "AURUM",
+  "description": "Sistema de Gestão e Agendamento Premium",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0D0D",
+  "theme_color": "#0D0D0D",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/7590/7590814.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
