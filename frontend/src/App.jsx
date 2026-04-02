@@ -17,10 +17,8 @@ function LandingPage({ onGoToAuth }) {
       {/* 🌟 CABEÇALHO */}
       <header className="p-6 flex justify-between items-center max-w-6xl mx-auto w-full animate-fade-in">
         <div className="flex items-center gap-3">
-          {/* CORREÇÃO DO ENCAIXE DA LOGO */}
-          <div className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)] bg-[#0D0D0D] flex items-center justify-center p-1">
-            <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-contain" />
-          </div>
+          {/* SEM CAIXA: Apenas a logo livre com um leve brilho */}
+          <img src={LOGO_AURUM} alt="AURUM" className="w-12 h-auto drop-shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
           <span className="font-['Playfair_Display'] font-bold text-xl tracking-widest text-[#D4AF37]">AURUM</span>
         </div>
         <button onClick={onGoToAuth} className="text-xs font-bold tracking-widest text-[#D4AF37] uppercase hover:text-white transition-colors border border-[#D4AF37]/50 px-5 py-2 rounded-full hover:bg-[#D4AF37]/10">Entrar</button>
@@ -30,10 +28,8 @@ function LandingPage({ onGoToAuth }) {
       <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
-        {/* CORREÇÃO DO ENCAIXE DA LOGO GIGANTE */}
-        <div className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20 bg-[#0D0D0D] flex items-center justify-center p-3">
-          <img src={LOGO_AURUM} alt="AURUM Premium" className="w-full h-full object-contain" />
-        </div>
+        {/* SEM CAIXA: Logo gigante e imponente com brilho 3D seguindo a forma */}
+        <img src={LOGO_AURUM} alt="AURUM Premium" className="w-48 md:w-64 h-auto drop-shadow-[0_0_40px_rgba(212,175,55,0.3)] mb-4" />
         
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
           O Sistema Definitivo para Salões de <span className="text-[#D4AF37] italic">Alto Padrão</span>
@@ -133,11 +129,10 @@ function LandingPage({ onGoToAuth }) {
          </div>
       </section>
 
-      {/* FOOTER COM LOGO AJUSTADA */}
+      {/* FOOTER */}
       <footer className="border-t border-[#2A2A2A] bg-[#0D0D0D] py-8 text-center">
-        <div className="w-12 h-12 rounded-lg mx-auto mb-4 flex items-center justify-center opacity-50 grayscale">
-          <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-contain" />
-        </div>
+        {/* SEM CAIXA TAMBÉM */}
+        <img src={LOGO_AURUM} alt="AURUM" className="w-16 h-auto mx-auto mb-4 opacity-50 grayscale drop-shadow-md" />
         <p className="text-[#6F6F6F] text-xs">© 2026 AURUM Premium SaaS. Todos os direitos reservados.</p>
       </footer>
     </div>
@@ -181,11 +176,9 @@ function TelaAuth({ onLogin, onVoltar }) {
       
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         
-        {/* CORREÇÃO DO ENCAIXE DA LOGO NA TELA DE LOGIN */}
-        <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30 bg-[#0D0D0D] flex items-center justify-center p-2">
-            <img src={LOGO_AURUM} alt="AURUM Logo" className="w-full h-full object-contain" />
-          </div>
+        {/* SEM CAIXA NA TELA DE LOGIN TAMBÉM */}
+        <div className="text-center mb-4 flex flex-col items-center">
+          <img src={LOGO_AURUM} alt="AURUM Logo" className="w-40 md:w-48 drop-shadow-[0_0_40px_rgba(212,175,55,0.4)] mb-2" />
         </div>
 
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
