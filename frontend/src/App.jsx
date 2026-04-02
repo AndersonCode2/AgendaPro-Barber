@@ -6,8 +6,7 @@ import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Tra
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
-const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_1_de_abr._de_2026_17_35_15_fanupb';
-
+const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/c_fill,r_max,f_png,q_auto/ChatGPT_Image_2_de_abr._de_2026_10_57_23_zpooov';
 // ==========================================
 // 🌍 MÁQUINA DE VENDAS (LANDING PAGE)
 // ==========================================
