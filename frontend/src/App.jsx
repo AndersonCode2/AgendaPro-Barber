@@ -1,11 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
-// Link da Imagem Atualizado com fundo transparente
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
 
 // ==========================================
@@ -14,21 +13,16 @@ const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_a
 function LandingPage({ onGoToAuth }) {
   return (
     <div className="min-h-screen bg-[#080808] text-white font-['Inter'] overflow-x-hidden selection:bg-[#D4AF37] selection:text-black">
-      {/* 🌟 CABEÇALHO */}
       <header className="p-6 flex justify-between items-center max-w-6xl mx-auto w-full animate-fade-in">
         <div className="flex items-center gap-3">
-          {/* SEM CAIXA: Apenas a logo livre com um leve brilho */}
           <img src={LOGO_AURUM} alt="AURUM" className="w-12 h-auto drop-shadow-[0_0_8px_rgba(212,175,55,0.4)]" />
           <span className="font-['Playfair_Display'] font-bold text-xl tracking-widest text-[#D4AF37]">AURUM</span>
         </div>
         <button onClick={onGoToAuth} className="text-xs font-bold tracking-widest text-[#D4AF37] uppercase hover:text-white transition-colors border border-[#D4AF37]/50 px-5 py-2 rounded-full hover:bg-[#D4AF37]/10">Entrar</button>
       </header>
 
-      {/* 🌟 HERO SECTION (TOPO) */}
       <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
-        
-        {/* SEM CAIXA: Logo gigante e imponente com brilho 3D seguindo a forma */}
         <img src={LOGO_AURUM} alt="AURUM Premium" className="w-48 md:w-64 h-auto drop-shadow-[0_0_40px_rgba(212,175,55,0.3)] mb-4" />
         
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
@@ -40,11 +34,10 @@ function LandingPage({ onGoToAuth }) {
         </p>
         
         <button onClick={onGoToAuth} className="bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-12 py-5 rounded-full font-bold tracking-widest uppercase text-sm shadow-[0_10px_40px_rgba(212,175,55,0.4)] hover:scale-105 transition-all flex items-center gap-3">
-          Testar Grátis Agora <ChevronRight size={18} strokeWidth={3} />
+          Testar 1 Mês Grátis <ChevronRight size={18} strokeWidth={3} />
         </button>
       </main>
 
-      {/* 🌟 BENEFÍCIOS */}
       <section className="bg-[#1A1A1A] py-24 border-y border-[#2A2A2A] relative z-0">
         <div className="max-w-6xl mx-auto px-6">
            <div className="text-center mb-16 space-y-4">
@@ -76,15 +69,13 @@ function LandingPage({ onGoToAuth }) {
         </div>
       </section>
 
-      {/* 🌟 PREÇOS */}
       <section className="py-24 max-w-5xl mx-auto px-6 relative">
          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-75 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
          <div className="text-center mb-16 space-y-4">
             <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Escolha sua Exclusividade</h2>
-            <p className="text-[#A8A8A8] font-light">Sem taxas escondidas. Sem fidelidade.</p>
+            <p className="text-[#A8A8A8] font-light">Comece hoje. 1 mês grátis. Sem fidelidade.</p>
          </div>
          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* PLANO AUTÔNOMO */}
             <div className="bg-[#1A1A1A] p-8 md:p-10 rounded-[2.5rem] border border-[#2A2A2A] flex flex-col hover:border-[#D4AF37]/30 transition-all">
                <div className="mb-8">
                  <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase mb-2 block">Para Profissionais Individuais</span>
@@ -101,10 +92,9 @@ function LandingPage({ onGoToAuth }) {
                  <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Controle de Caixa Diário</p>
                  <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> CRM (Lista de Clientes)</p>
                </div>
-               <button onClick={onGoToAuth} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:border-[#D4AF37] transition-all">Assinar Autônomo</button>
+               <button onClick={onGoToAuth} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:border-[#D4AF37] transition-all">Testar Autônomo</button>
             </div>
 
-            {/* PLANO SALÃO VIP */}
             <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-4 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
                  <Star size={12} className="fill-[#0D0D0D]" /> Mais Escolhido
@@ -124,14 +114,12 @@ function LandingPage({ onGoToAuth }) {
                  <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cliente escolhe quem vai atender</p>
                  <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cálculo Automático de Comissões</p>
                </div>
-               <button onClick={onGoToAuth} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:scale-105 transition-transform shadow-lg">Assinar Equipe VIP</button>
+               <button onClick={onGoToAuth} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:scale-105 transition-transform shadow-lg">Testar Equipe VIP</button>
             </div>
          </div>
       </section>
 
-      {/* FOOTER */}
       <footer className="border-t border-[#2A2A2A] bg-[#0D0D0D] py-8 text-center">
-        {/* SEM CAIXA TAMBÉM */}
         <img src={LOGO_AURUM} alt="AURUM" className="w-16 h-auto mx-auto mb-4 opacity-50 grayscale drop-shadow-md" />
         <p className="text-[#6F6F6F] text-xs">© 2026 AURUM Premium SaaS. Todos os direitos reservados.</p>
       </footer>
@@ -175,8 +163,6 @@ function TelaAuth({ onLogin, onVoltar }) {
       <button onClick={onVoltar} className="absolute top-6 left-6 text-[#A8A8A8] hover:text-[#D4AF37] flex items-center gap-2 text-sm transition-colors"><ArrowLeft size={18}/> Voltar</button>
       
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
-        
-        {/* SEM CAIXA NA TELA DE LOGIN TAMBÉM */}
         <div className="text-center mb-4 flex flex-col items-center">
           <img src={LOGO_AURUM} alt="AURUM Logo" className="w-40 md:w-48 drop-shadow-[0_0_40px_rgba(212,175,55,0.4)] mb-2" />
         </div>
@@ -211,8 +197,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [modalAberto, setModalAberto] = useState(false);
   const [mostrarFormServico, setMostrarFormServico] = useState(false);
 
+  // 🌟 ESTADOS DA ASSINATURA
   const [bloqueado, setBloqueado] = useState(false);
-  const [diasRestantes, setDiasRestantes] = useState(7);
+  const [diasRestantes, setDiasRestantes] = useState(30);
+  const [modalPagamento, setModalPagamento] = useState(false);
   const [carregandoPix, setCarregandoPix] = useState(false);
   const [qrCodeBase64, setQrCodeBase64] = useState(null);
   const [qrCodeCopiaCola, setQrCodeCopiaCola] = useState('');
@@ -257,7 +245,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
       
       if (dadosAssinatura.status === 'vencido') {
         setBloqueado(true);
-        setTelaAtiva('pagamento');
+        setModalPagamento(true);
         return; 
       } else {
         setDiasRestantes(dadosAssinatura.dias_restantes);
@@ -295,7 +283,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
       const res = await fetch(`${API_URL}/gerar-pix`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ plano: planoEscolhido }) });
       const data = await res.json();
       if (data.erro_mp) {
-        alert("O CEO ainda precisa configurar o Token do Mercado Pago no Servidor para gerar o QR Code real.");
+        alert("O CEO ainda precisa configurar o Token do Mercado Pago no Servidor.");
       } else {
         setQrCodeBase64(data.qr_code_base64); setQrCodeCopiaCola(data.qr_code_copia_cola);
       }
@@ -350,61 +338,58 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const enviarSuporteParaCEO = async (e) => { e.preventDefault(); try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error(err); } window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank'); setModalSuporte(false); setTextoSuporte(''); };
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
-  if (bloqueado && telaAtiva === 'pagamento' && !usuario.is_ceo) {
-    return (
-      <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white items-center justify-center p-6 text-center relative overflow-hidden">
-         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-red-900/10 rounded-full blur-[120px] -z-10"></div>
-         <Lock size={64} className="text-red-500 mb-6" />
-         <h1 className="text-3xl font-['Playfair_Display'] text-white mb-4">Seu teste grátis acabou.</h1>
-         <p className="text-[#A8A8A8] max-w-md mb-10 text-sm leading-relaxed">Para continuar gerenciando sua agenda, faturamento e clientes na plataforma AURUM Premium, escolha seu plano abaixo:</p>
-         
-         {!qrCodeBase64 ? (
-           <div className="grid gap-6 w-full max-w-2xl">
-              <button onClick={() => gerarPix('autonomo')} disabled={carregandoPix} className="bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#D4AF37] p-6 rounded-3xl flex justify-between items-center transition-all group text-left">
-                <div>
-                  <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-1">Profissional Individual</span>
-                  <span className="text-xl font-['Playfair_Display'] text-white block">Plano Autônomo</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-bold text-[#D4AF37]">R$ 19,90</span>
-                  <span className="text-[10px] text-[#A8A8A8] block">/mês no Pix</span>
+  // 🌟 MODAL DE PAGAMENTO (Pode ser aberto pelo Menu Ajustes ou pelo Bloqueio)
+  const renderModalPagamento = () => (
+    <div className={`fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 ${bloqueado ? 'animate-fade-in' : 'animate-slide-up'}`}>
+      <div className="bg-[#1A1A1A] w-full max-w-2xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl relative flex flex-col items-center">
+        {!bloqueado && (
+          <button onClick={() => { setModalPagamento(false); setQrCodeBase64(null); }} className="absolute top-6 right-6 text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-2 rounded-full transition-colors"><X size={18}/></button>
+        )}
+        
+        {bloqueado ? <Lock size={48} className="text-red-500 mb-4" /> : <CreditCard size={48} className="text-[#D4AF37] mb-4" />}
+        
+        <h2 className="text-3xl font-['Playfair_Display'] text-white mb-2 text-center">
+          {bloqueado ? "Sua assinatura venceu." : "Renovar Assinatura"}
+        </h2>
+        <p className="text-[#A8A8A8] text-sm mb-8 text-center max-w-md">Garanta seu acesso ininterrupto à plataforma AURUM Premium escolhendo um dos planos abaixo.</p>
+
+        {!qrCodeBase64 ? (
+           <div className="grid md:grid-cols-2 gap-4 w-full">
+              <button onClick={() => gerarPix('autonomo')} disabled={carregandoPix} className="bg-[#0D0D0D] border border-[#2A2A2A] hover:border-[#D4AF37] p-6 rounded-3xl flex flex-col items-start transition-all group text-left">
+                <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-1">Profissional Individual</span>
+                <span className="text-xl font-['Playfair_Display'] text-white block mb-4">Plano Autônomo</span>
+                <div className="mt-auto">
+                  <span className="text-2xl font-bold text-[#D4AF37]">R$ 19,90</span><span className="text-[10px] text-[#A8A8A8]">/mês no Pix</span>
                 </div>
               </button>
               
-              <button onClick={() => gerarPix('equipe')} disabled={carregandoPix} className="bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
-                <div>
-                  <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Para Salões (Equipe)</span>
-                  <span className="text-xl font-['Playfair_Display'] text-[#0D0D0D] font-bold block">Plano Equipe VIP</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span>
-                  <span className="text-[10px] text-[#0D0D0D] opacity-80 block">/mês no Pix</span>
+              <button onClick={() => gerarPix('equipe')} disabled={carregandoPix} className="bg-linear-to-br from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex flex-col items-start transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
+                <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Para Salões (Equipe)</span>
+                <span className="text-xl font-['Playfair_Display'] text-[#0D0D0D] font-bold block mb-4">Plano Equipe VIP</span>
+                <div className="mt-auto">
+                  <span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span><span className="text-[10px] text-[#0D0D0D] opacity-80">/mês no Pix</span>
                 </div>
               </button>
-              {carregandoPix && <p className="text-[#D4AF37] text-xs flex items-center justify-center gap-2 mt-4"><Loader2 className="animate-spin" size={16}/> Gerando PIX seguro...</p>}
            </div>
          ) : (
-           <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#D4AF37] w-full max-w-md animate-slide-up flex flex-col items-center">
+           <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#D4AF37] w-full max-w-md flex flex-col items-center">
               <h3 className="text-xl font-['Playfair_Display'] text-[#D4AF37] mb-2">Escaneie para Pagar</h3>
-              <p className="text-xs text-[#A8A8A8] mb-6">O sistema será liberado automaticamente após a confirmação do pagamento.</p>
-              
-              <div className="bg-white p-4 rounded-xl mb-6">
-                 <img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48" />
-              </div>
-              
-              <button onClick={() => { navigator.clipboard.writeText(qrCodeCopiaCola); alert('Código Pix copiado!'); }} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-xl text-sm hover:border-[#D4AF37] transition-colors flex justify-center items-center gap-2">
-                 <QrCode size={18} /> Copiar Código Pix
-              </button>
-              <button onClick={() => { setQrCodeBase64(null); setQrCodeCopiaCola(''); }} className="mt-4 text-xs text-[#6F6F6F] hover:text-white">Voltar e escolher outro plano</button>
+              <p className="text-xs text-[#A8A8A8] mb-6 text-center">O sistema será renovado por 30 dias na hora!</p>
+              <div className="bg-white p-4 rounded-xl mb-6"><img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48" /></div>
+              <button onClick={() => { navigator.clipboard.writeText(qrCodeCopiaCola); alert('Código Pix copiado!'); }} className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white py-4 rounded-xl text-sm hover:border-[#D4AF37] transition-colors flex justify-center items-center gap-2"><QrCode size={18} /> Copiar Pix (Copia e Cola)</button>
+              <button onClick={() => { setQrCodeBase64(null); setQrCodeCopiaCola(''); }} className="mt-4 text-xs text-[#6F6F6F] hover:text-white">Voltar</button>
            </div>
          )}
-         <button onClick={onLogout} className="mt-12 text-[#6F6F6F] text-xs hover:text-red-500">Sair da Conta</button>
+         {carregandoPix && <p className="text-[#D4AF37] text-xs flex items-center justify-center gap-2 mt-6"><Loader2 className="animate-spin" size={16}/> Gerando PIX seguro...</p>}
+         {bloqueado && <button onClick={onLogout} className="mt-8 text-[#6F6F6F] text-xs hover:text-red-500">Sair da Conta</button>}
       </div>
-    )
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative overflow-hidden">
+      {modalPagamento && renderModalPagamento()}
+      
       {notificacao && (<div className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(212,175,55,0.6)] font-bold text-sm z-50 animate-slide-down flex items-center gap-3"><BellRing size={18} className="animate-bounce" /> {notificacao}</div>)}
       <header className="bg-[#1A1A1A] p-6 shadow-[0_1px_0_rgba(42,42,42,1)] flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
         <div className="flex items-center gap-4">
@@ -417,11 +402,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] bg-[#0D0D0D] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center"><LogOut size={16} /></button>
       </header>
 
-      {!usuario.is_ceo && diasRestantes <= 3 && (
-         <div className="bg-red-900/40 text-red-200 p-3 text-xs text-center border-b border-red-900/50 flex justify-center items-center gap-2">
+      {/* ⚠️ AVISO DE TESTE ACABANDO (COM BOTÃO DE PAGAR AGORA) */}
+      {!usuario.is_ceo && diasRestantes <= 3 && diasRestantes >= 0 && !bloqueado && (
+         <div className="bg-red-900/40 text-red-200 p-3 text-xs text-center border-b border-red-900/50 flex justify-center items-center gap-3">
            <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
-           Seu teste grátis acaba em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}. 
-           <button onClick={() => { setBloqueado(true); setTelaAtiva('pagamento'); }} className="underline font-bold ml-1">Assinar Agora</button>
+           Sua assinatura vence em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}. 
+           <button onClick={() => setModalPagamento(true)} className="bg-red-600 text-white px-3 py-1 rounded-full font-bold hover:bg-red-500 transition-colors shadow-md">Pagar Agora</button>
          </div>
       )}
 
@@ -514,6 +500,24 @@ function PainelProfissional({ token, usuario, onLogout }) {
         
         {telaAtiva === 'config' && (
           <div className="space-y-6 animate-fade-in">
+            
+            {/* 🌟 NOVA ÁREA DE ASSINATURA DENTRO DOS AJUSTES */}
+            {!usuario.is_ceo && (
+              <div className="mb-10 pb-8 border-b border-[#2A2A2A]">
+                 <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-2">Sua Assinatura</h2>
+                 <p className="text-xs text-[#A8A8A8] mb-6 font-light">Acesso Premium à plataforma AURUM.</p>
+                 <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#2A2A2A] flex justify-between items-center">
+                   <div>
+                     <p className="text-white font-medium text-lg">Status: <span className={diasRestantes > 0 ? "text-emerald-500" : "text-red-500"}>{diasRestantes > 0 ? 'Ativo' : 'Vencido'}</span></p>
+                     <p className="text-sm text-[#A8A8A8] mt-1">Vence em: {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}</p>
+                   </div>
+                   <button onClick={() => setModalPagamento(true)} className="bg-[#D4AF37] text-[#0D0D0D] px-5 py-3 rounded-xl font-bold tracking-widest uppercase text-[10px] md:text-xs shadow-lg hover:scale-105 transition-transform">
+                     Renovar
+                   </button>
+                 </div>
+              </div>
+            )}
+
             <div className="mb-10 pb-8 border-b border-[#2A2A2A]">
                <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-2">Sua Marca</h2>
                <p className="text-xs text-[#A8A8A8] mb-6 font-light">Faça upload da logo do seu salão para ela aparecer na tela de agendamento dos seus clientes.</p>

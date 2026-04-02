@@ -11,7 +11,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// 🌟 AUTO-SINCRONIZADOR
+// 🌟 AUTO-SINCRONIZADOR (AGORA COM 30 DIAS DE TESTE)
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -23,7 +23,8 @@ pool.connect().then(async () => {
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS status_assinatura VARCHAR(20) DEFAULT 'trial';
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS data_vencimento TIMESTAMP;
       
-      UPDATE profissionais SET data_vencimento = CURRENT_TIMESTAMP + INTERVAL '7 days' WHERE data_vencimento IS NULL AND is_ceo = FALSE;
+      -- Atualiza quem não tem vencimento para 30 dias
+      UPDATE profissionais SET data_vencimento = CURRENT_TIMESTAMP + INTERVAL '30 days' WHERE data_vencimento IS NULL AND is_ceo = FALSE;
 
       CREATE TABLE IF NOT EXISTS servicos (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, preco DECIMAL(10,2) NOT NULL, tempo VARCHAR(50));
       CREATE TABLE IF NOT EXISTS clientes (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, whatsapp VARCHAR(20), nascimento VARCHAR(20), data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -37,7 +38,7 @@ pool.connect().then(async () => {
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
-    console.log('✅ Banco de dados pronto para o Financeiro!');
+    console.log('✅ Banco de dados pronto para o Financeiro (30 Dias)!');
   } catch (e) { console.error('Erro na sincronização:', e); }
 }).catch(err => console.error(err));
 
@@ -60,8 +61,9 @@ app.post('/api/cadastro', async (req, res) => {
     if (usuarioExiste.rows.length > 0) return res.status(400).json({ error: 'E-mail ou WhatsApp já em uso.' });
     const senhaHash = await bcrypt.hash(senha, await bcrypt.genSalt(10));
     const isCeo = email === 'codebyanderson@hotmail.com';
-    const result = await pool.query(`INSERT INTO profissionais (nome, email, senha, telefone, is_ceo, data_vencimento) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP + INTERVAL '7 days') RETURNING id, nome, email, is_ceo`, [nome, email, senhaHash, telefone, isCeo]);
-    res.status(201).json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: isCeo }, JWT_SECRET, { expiresIn: '7d' }) });
+    // 🌟 AQUI: CADASTROU, GANHOU 30 DIAS
+    const result = await pool.query(`INSERT INTO profissionais (nome, email, senha, telefone, is_ceo, data_vencimento) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP + INTERVAL '30 days') RETURNING id, nome, email, is_ceo`, [nome, email, senhaHash, telefone, isCeo]);
+    res.status(201).json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: isCeo }, JWT_SECRET, { expiresIn: '30d' }) });
   } catch (error) { res.status(500).json({ error: 'Erro no cadastro.' }); }
 });
 
@@ -70,7 +72,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM profissionais WHERE email = $1', [email]);
     if (result.rows.length === 0 || !(await bcrypt.compare(senha, result.rows[0].senha))) return res.status(400).json({ error: 'Credenciais incorretas.' });
-    res.json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: result.rows[0].is_ceo }, JWT_SECRET, { expiresIn: '7d' }) });
+    res.json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: result.rows[0].is_ceo }, JWT_SECRET, { expiresIn: '30d' }) });
   } catch (error) { res.status(500).json({ error: 'Erro no login.' }); }
 });
 
@@ -137,7 +139,6 @@ app.post('/api/gerar-pix', verificarToken, async (req, res) => {
 // 🔔 O OUVIDO DO SISTEMA (WEBHOOK)
 app.post('/api/webhook', async (req, res) => {
   const paymentId = req.query.id || req.query['data.id'] || req.body?.data?.id;
-  
   if (!paymentId) return res.sendStatus(200); 
 
   try {
@@ -151,7 +152,6 @@ app.post('/api/webhook', async (req, res) => {
       await pool.query(`UPDATE profissionais SET status_assinatura = 'pago', data_vencimento = CURRENT_TIMESTAMP + INTERVAL '30 days' WHERE id = $1`, [profissionalId]);
       console.log(`✅ [AURUM FINANCEIRO] Pagamento recebido! Conta ID ${profissionalId} renovada por 30 dias.`);
     }
-    
     res.sendStatus(200);
   } catch(e) {
     console.error('Erro no webhook:', e);
