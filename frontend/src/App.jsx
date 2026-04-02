@@ -1,13 +1,146 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_1_de_abr._de_2026_17_35_15_fanupb';
 
-function TelaAuth({ onLogin }) {
+// ==========================================
+// 🌍 MÁQUINA DE VENDAS (LANDING PAGE)
+// ==========================================
+function LandingPage({ onGoToAuth }) {
+  return (
+    <div className="min-h-screen bg-[#080808] text-white font-['Inter'] overflow-x-hidden selection:bg-[#D4AF37] selection:text-black">
+      {/* 🌟 CABEÇALHO */}
+      <header className="p-6 flex justify-between items-center max-w-6xl mx-auto w-full animate-fade-in">
+        <div className="flex items-center gap-3">
+          <img src={LOGO_AURUM} alt="AURUM" className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)]" />
+          <span className="font-['Playfair_Display'] font-bold text-xl tracking-widest text-[#D4AF37]">AURUM</span>
+        </div>
+        <button onClick={onGoToAuth} className="text-xs font-bold tracking-widest text-[#D4AF37] uppercase hover:text-white transition-colors border border-[#D4AF37]/50 px-5 py-2 rounded-full hover:bg-[#D4AF37]/10">Entrar</button>
+      </header>
+
+      {/* 🌟 HERO SECTION (TOPO) */}
+      <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+        
+        <img src={LOGO_AURUM} alt="AURUM Premium" className="w-40 h-40 md:w-56 md:h-56 rounded-[2rem] shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20" />
+        
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
+          O Sistema Definitivo para Salões de <span className="text-[#D4AF37] italic">Alto Padrão</span>
+        </h1>
+        
+        <p className="text-[#A8A8A8] max-w-2xl text-lg md:text-xl font-light leading-relaxed">
+          Esqueça as agendas de papel e sistemas feios. Gerencie sua agenda, calcule comissões, controle seu fluxo de caixa e fidelize seus clientes com a plataforma mais exclusiva do mercado.
+        </p>
+        
+        <button onClick={onGoToAuth} className="bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-12 py-5 rounded-full font-bold tracking-widest uppercase text-sm shadow-[0_10px_40px_rgba(212,175,55,0.4)] hover:scale-105 transition-all flex items-center gap-3">
+          Testar Grátis Agora <ChevronRight size={18} strokeWidth={3} />
+        </button>
+      </main>
+
+      {/* 🌟 BENEFÍCIOS */}
+      <section className="bg-[#1A1A1A] py-24 border-y border-[#2A2A2A] relative z-0">
+        <div className="max-w-6xl mx-auto px-6">
+           <div className="text-center mb-16 space-y-4">
+             <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-[#D4AF37]">A Experiência AURUM</h2>
+             <p className="text-[#A8A8A8] font-light">Tudo o que você precisa para escalar o seu negócio.</p>
+           </div>
+           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+             <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#2A2A2A] hover:border-[#D4AF37]/50 transition-colors group">
+               <Calendar size={32} className="text-[#D4AF37] mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-medium text-white mb-3">Agenda Inteligente</h3>
+               <p className="text-[#6F6F6F] text-sm leading-relaxed">Link VIP com a sua logo para clientes agendarem sozinhos 24h por dia.</p>
+             </div>
+             <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#2A2A2A] hover:border-[#D4AF37]/50 transition-colors group">
+               <DollarSign size={32} className="text-[#D4AF37] mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-medium text-white mb-3">Fluxo de Caixa</h3>
+               <p className="text-[#6F6F6F] text-sm leading-relaxed">Acompanhe seus ganhos diários e o faturamento bruto em tempo real.</p>
+             </div>
+             <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#2A2A2A] hover:border-[#D4AF37]/50 transition-colors group">
+               <Briefcase size={32} className="text-[#D4AF37] mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-medium text-white mb-3">Gestão de Equipe</h3>
+               <p className="text-[#6F6F6F] text-sm leading-relaxed">Cadastre profissionais e deixe o sistema calcular as comissões automaticamente.</p>
+             </div>
+             <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#2A2A2A] hover:border-[#D4AF37]/50 transition-colors group">
+               <UsersRound size={32} className="text-[#D4AF37] mb-6 group-hover:scale-110 transition-transform" />
+               <h3 className="text-xl font-medium text-white mb-3">CRM de Clientes</h3>
+               <p className="text-[#6F6F6F] text-sm leading-relaxed">Lista completa dos seus clientes e botão para enviar promoções pelo WhatsApp.</p>
+             </div>
+           </div>
+        </div>
+      </section>
+
+      {/* 🌟 PREÇOS (OS PLANOS) */}
+      <section className="py-24 max-w-5xl mx-auto px-6 relative">
+         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+         <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Escolha sua Exclusividade</h2>
+            <p className="text-[#A8A8A8] font-light">Sem taxas escondidas. Sem fidelidade.</p>
+         </div>
+         
+         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* PLANO AUTÔNOMO */}
+            <div className="bg-[#1A1A1A] p-8 md:p-10 rounded-[2.5rem] border border-[#2A2A2A] flex flex-col hover:border-[#D4AF37]/30 transition-all">
+               <div className="mb-8">
+                 <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase mb-2 block">Para Profissionais Individuais</span>
+                 <h3 className="text-3xl font-['Playfair_Display'] text-white mb-4">Plano Autônomo</h3>
+                 <div className="flex items-end gap-1 mb-2">
+                   <span className="text-lg text-[#6F6F6F] font-bold pb-2">R$</span>
+                   <span className="text-5xl font-bold text-[#D4AF37]">19,90</span>
+                   <span className="text-sm text-[#6F6F6F] pb-2">/mês</span>
+                 </div>
+               </div>
+               <div className="flex-1 space-y-4 mb-10">
+                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Link VIP de Agendamento</p>
+                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Sua Logo no Aplicativo</p>
+                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Controle de Caixa Diário</p>
+                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> CRM (Lista de Clientes)</p>
+               </div>
+               <button onClick={onGoToAuth} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:border-[#D4AF37] transition-all">Assinar Autônomo</button>
+            </div>
+
+            {/* PLANO SALÃO (DESTAQUE) */}
+            <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
+               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-4 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
+                 <Star size={12} className="fill-[#0D0D0D]" /> Mais Escolhido
+               </div>
+               <div className="mb-8">
+                 <span className="text-[#D4AF37] text-[10px] font-bold tracking-widest uppercase mb-2 block">Para Salões e Barbearias</span>
+                 <h3 className="text-3xl font-['Playfair_Display'] text-white mb-4">Plano Equipe VIP</h3>
+                 <div className="flex items-end gap-1 mb-2">
+                   <span className="text-lg text-[#D4AF37] font-bold pb-2 opacity-80">R$</span>
+                   <span className="text-5xl font-bold text-[#E6C76B]">24,99</span>
+                   <span className="text-sm text-[#A8A8A8] pb-2">/mês</span>
+                 </div>
+               </div>
+               <div className="flex-1 space-y-4 mb-10">
+                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Tudo do Plano Autônomo</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cadastro de Profissionais Ilimitado</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cliente escolhe quem vai atender</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cálculo Automático de Comissões</p>
+               </div>
+               <button onClick={onGoToAuth} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:scale-105 transition-transform shadow-lg">Assinar Equipe VIP</button>
+            </div>
+         </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="border-t border-[#2A2A2A] bg-[#0D0D0D] py-8 text-center">
+        <img src={LOGO_AURUM} alt="AURUM" className="w-8 h-8 rounded-lg mx-auto mb-4 opacity-50 grayscale" />
+        <p className="text-[#6F6F6F] text-xs">© 2026 AURUM Premium SaaS. Todos os direitos reservados.</p>
+      </footer>
+    </div>
+  );
+}
+
+
+// ==========================================
+// 🔐 TELA DE AUTENTICAÇÃO
+// ==========================================
+function TelaAuth({ onLogin, onVoltar }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); 
   const [telefone, setTelefone] = useState(''); const [senha, setSenha] = useState('');
@@ -36,12 +169,12 @@ function TelaAuth({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex flex-col justify-center items-center p-6 font-['Inter']">
+    <div className="min-h-screen bg-[#0D0D0D] flex flex-col justify-center items-center p-6 font-['Inter'] relative">
+      <button onClick={onVoltar} className="absolute top-6 left-6 text-[#A8A8A8] hover:text-[#D4AF37] flex items-center gap-2 text-sm transition-colors"><ArrowLeft size={18}/> Voltar</button>
+      
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
-        
-        {/* 🌟 LOGO AURUM NA TELA DE LOGIN */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src={LOGO_AURUM} alt="AURUM Logo" className="w-40 h-40 rounded-3xl object-cover shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30" />
+          <img src={LOGO_AURUM} alt="AURUM Logo" className="w-32 h-32 md:w-40 md:h-40 rounded-3xl object-cover shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30" />
         </div>
 
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
@@ -67,6 +200,20 @@ function TelaAuth({ onLogin }) {
   );
 }
 
+// ==========================================
+// 🛡️ CONTROLADOR PÚBLICO (LANDING OU AUTH)
+// ==========================================
+function HomePublica({ onLogin }) {
+  const [mostrarAuth, setMostrarAuth] = useState(false);
+  if (mostrarAuth) {
+    return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
+  }
+  return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
+}
+
+// ==========================================
+// 💎 PAINEL PROTEGIDO (PROFISSIONAL E CEO)
+// ==========================================
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
@@ -450,5 +597,5 @@ export default function App() {
   const [t, setT] = useState(localStorage.getItem('aurum_token')); const [u, setU] = useState(JSON.parse(localStorage.getItem('aurum_usuario')));
   const l = (nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); };
   const out = () => { localStorage.clear(); setT(null); setU(null); };
-  return <BrowserRouter><Routes><Route path="/" element={t && u ? <PainelProfissional token={t} usuario={u} onLogout={out} /> : <TelaAuth onLogin={l} />} /><Route path="/agendar/:id_profissional" element={<PaginaCliente />} /></Routes></BrowserRouter>;
+  return <BrowserRouter><Routes><Route path="/" element={t && u ? <PainelProfissional token={t} usuario={u} onLogout={out} /> : <HomePublica onLogin={l} />} /><Route path="/agendar/:id_profissional" element={<PaginaCliente />} /></Routes></BrowserRouter>;
 }
