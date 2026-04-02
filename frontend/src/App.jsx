@@ -1,12 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-// AQUI ESTAVA O PROBLEMA: Faltava o ChevronRight na lista abaixo! Adicionado. ✅
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, ChevronRight } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
+// Link da Imagem Atualizado com fundo transparente
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
+
 // ==========================================
 // 🌍 MÁQUINA DE VENDAS (LANDING PAGE)
 // ==========================================
@@ -16,7 +17,9 @@ function LandingPage({ onGoToAuth }) {
       {/* 🌟 CABEÇALHO */}
       <header className="p-6 flex justify-between items-center max-w-6xl mx-auto w-full animate-fade-in">
         <div className="flex items-center gap-3">
-          <img src={LOGO_AURUM} alt="AURUM" className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)]" />
+          <div className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)] overflow-hidden flex items-center justify-center">
+            <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-cover scale-[1.4]" />
+          </div>
           <span className="font-['Playfair_Display'] font-bold text-xl tracking-widest text-[#D4AF37]">AURUM</span>
         </div>
         <button onClick={onGoToAuth} className="text-xs font-bold tracking-widest text-[#D4AF37] uppercase hover:text-white transition-colors border border-[#D4AF37]/50 px-5 py-2 rounded-full hover:bg-[#D4AF37]/10">Entrar</button>
@@ -26,7 +29,9 @@ function LandingPage({ onGoToAuth }) {
       <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
-        <img src={LOGO_AURUM} alt="AURUM Premium" className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20" />
+        <div className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20 overflow-hidden flex items-center justify-center">
+          <img src={LOGO_AURUM} alt="AURUM Premium" className="w-full h-full object-cover scale-[1.4]" />
+        </div>
         
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
           O Sistema Definitivo para Salões de <span className="text-[#D4AF37] italic">Alto Padrão</span>
@@ -73,14 +78,13 @@ function LandingPage({ onGoToAuth }) {
         </div>
       </section>
 
-      {/* 🌟 PREÇOS (OS PLANOS) */}
+      {/* 🌟 PREÇOS */}
       <section className="py-24 max-w-5xl mx-auto px-6 relative">
          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-75 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
          <div className="text-center mb-16 space-y-4">
             <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Escolha sua Exclusividade</h2>
             <p className="text-[#A8A8A8] font-light">Sem taxas escondidas. Sem fidelidade.</p>
          </div>
-         
          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* PLANO AUTÔNOMO */}
             <div className="bg-[#1A1A1A] p-8 md:p-10 rounded-[2.5rem] border border-[#2A2A2A] flex flex-col hover:border-[#D4AF37]/30 transition-all">
@@ -102,7 +106,7 @@ function LandingPage({ onGoToAuth }) {
                <button onClick={onGoToAuth} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:border-[#D4AF37] transition-all">Assinar Autônomo</button>
             </div>
 
-            {/* PLANO SALÃO (DESTAQUE) */}
+            {/* PLANO SALÃO VIP */}
             <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-4 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
                  <Star size={12} className="fill-[#0D0D0D]" /> Mais Escolhido
@@ -129,13 +133,14 @@ function LandingPage({ onGoToAuth }) {
 
       {/* FOOTER */}
       <footer className="border-t border-[#2A2A2A] bg-[#0D0D0D] py-8 text-center">
-        <img src={LOGO_AURUM} alt="AURUM" className="w-8 h-8 rounded-lg mx-auto mb-4 opacity-50 grayscale" />
+        <div className="w-8 h-8 rounded-lg mx-auto mb-4 overflow-hidden flex items-center justify-center opacity-50 grayscale">
+          <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-cover scale-[1.4]" />
+        </div>
         <p className="text-[#6F6F6F] text-xs">© 2026 AURUM Premium SaaS. Todos os direitos reservados.</p>
       </footer>
     </div>
   );
 }
-
 
 // ==========================================
 // 🔐 TELA DE AUTENTICAÇÃO
@@ -164,7 +169,7 @@ function TelaAuth({ onLogin, onVoltar }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro na autenticação');
       onLogin(data.token, data.usuario);
-    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando, aguarde uns segundos...' : err.message); } 
+    } catch (err) { setErro(err.message === 'Failed to fetch' ? 'Servidor acordando...' : err.message); } 
     finally { setCarregando(false); }
   };
 
@@ -174,24 +179,19 @@ function TelaAuth({ onLogin, onVoltar }) {
       
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src={LOGO_AURUM} alt="AURUM Logo" className="w-32 h-32 md:w-40 md:h-40 rounded-3xl object-cover shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30" />
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30 overflow-hidden flex items-center justify-center">
+            <img src={LOGO_AURUM} alt="AURUM Logo" className="w-full h-full object-cover scale-[1.4]" />
+          </div>
         </div>
 
         <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#2A2A2A] shadow-2xl relative overflow-hidden">
           <h2 className="text-2xl text-white font-['Playfair_Display'] mb-6 text-center">{isLogin ? 'Acesse seu espaço' : 'Crie sua exclusividade'}</h2>
           {erro && <div className="bg-red-900/20 text-red-200 p-3 rounded-lg text-sm mb-4 text-center animate-fade-in">{erro}</div>}
           <form onSubmit={handleSubmitTradicional} className="space-y-4">
-            {!isLogin && (
-              <>
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Profissional / Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-                <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-              </>
-            )}
+            {!isLogin && (<><div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Nome do Salão</label><input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div><div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">WhatsApp (Com DDD)</label><input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div></>)}
             <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
             <div><label className="text-[10px] text-[#A8A8A8] uppercase mb-2 block">Senha Segura</label><input type="password" required placeholder="Mínimo 6 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none" /></div>
-            <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>
-              {carregando ? <><Loader2 className="w-4 h-4 animate-spin text-[#0D0D0D]" /> Conectando...</> : (isLogin ? 'Entrar' : 'Cadastrar')}
-            </button>
+            <button type="submit" disabled={carregando} className={`w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium tracking-widest uppercase text-sm mt-2 flex justify-center items-center gap-2 ${carregando ? 'opacity-70 cursor-wait' : 'hover:bg-[#E6C76B]'}`}>{carregando ? <><Loader2 className="w-4 h-4 animate-spin text-[#0D0D0D]" /> Conectando...</> : (isLogin ? 'Entrar' : 'Cadastrar')}</button>
           </form>
           <div className="mt-8 text-center"><button onClick={() => { setIsLogin(!isLogin); setErro(''); setSenha(''); }} className="text-[#A8A8A8] text-sm hover:text-white transition-colors">{isLogin ? 'Não tem uma conta? Crie aqui.' : 'Já tem uma conta? Faça login.'}</button></div>
         </div>
@@ -200,24 +200,25 @@ function TelaAuth({ onLogin, onVoltar }) {
   );
 }
 
-// ==========================================
-// 🛡️ CONTROLADOR PÚBLICO (LANDING OU AUTH)
-// ==========================================
 function HomePublica({ onLogin }) {
   const [mostrarAuth, setMostrarAuth] = useState(false);
-  if (mostrarAuth) {
-    return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
-  }
+  if (mostrarAuth) return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
   return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
 }
 
 // ==========================================
-// 💎 PAINEL PROTEGIDO (PROFISSIONAL E CEO)
+// 💎 PAINEL PROTEGIDO (COM TRAVA DE ASSINATURA)
 // ==========================================
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
   const [mostrarFormServico, setMostrarFormServico] = useState(false);
+
+  const [bloqueado, setBloqueado] = useState(false);
+  const [diasRestantes, setDiasRestantes] = useState(7);
+  const [carregandoPix, setCarregandoPix] = useState(false);
+  const [qrCodeBase64, setQrCodeBase64] = useState(null);
+  const [qrCodeCopiaCola, setQrCodeCopiaCola] = useState('');
 
   const [ganhoDia, setGanhoDia] = useState(0);
   const [qtdAtendimentos, setQtdAtendimentos] = useState(0);
@@ -243,7 +244,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   
   const todosHorarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
   const [meusHorarios, setMeusHorarios] = useState([]);
-  
   const [meuLogo, setMeuLogo] = useState(null);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
 
@@ -255,18 +255,23 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const carregarTudo = useCallback(async () => {
     try {
+      const resAssinatura = await fetch(`${API_URL}/assinatura`, { headers: headersAPI });
+      const dadosAssinatura = await resAssinatura.json();
+      
+      if (dadosAssinatura.status === 'vencido') {
+        setBloqueado(true);
+        setTelaAtiva('pagamento');
+        return; 
+      } else {
+        setDiasRestantes(dadosAssinatura.dias_restantes);
+      }
+
       fetch(`${API_URL}/dashboard`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error){ setGanhoDia(d.ganhoDia||0); setQtdAtendimentos(d.qtdAtendimentos||0); }});
       fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setServicos(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setHistoricoCaixa(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setFuncionarios(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setListaClientes(Array.isArray(d) ? d : []));
-      
-      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ 
-        if(d && !d.error) {
-          if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(','));
-          if(d.logo_url) setMeuLogo(d.logo_url);
-        }
-      });
+      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) { if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); if(d.logo_url) setMeuLogo(d.logo_url); } });
 
       if (usuario.is_ceo) {
         fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) setDadosCeo(d); });
@@ -287,95 +292,121 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   useEffect(() => { carregarTudo(); const intervalo = setInterval(carregarTudo, 30000); return () => clearInterval(intervalo); }, []);
 
+  const gerarPix = async (planoEscolhido) => {
+    setCarregandoPix(true);
+    try {
+      const res = await fetch(`${API_URL}/gerar-pix`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ plano: planoEscolhido }) });
+      const data = await res.json();
+      if (data.erro_mp) {
+        alert("O CEO ainda precisa configurar o Token do Mercado Pago no Servidor para gerar o QR Code real.");
+      } else {
+        setQrCodeBase64(data.qr_code_base64); setQrCodeCopiaCola(data.qr_code_copia_cola);
+      }
+    } catch (error) { console.error(error); alert("Erro ao gerar Pix"); }
+    setCarregandoPix(false);
+  };
+
   const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
+    const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 250; const MAX_HEIGHT = 250;
+        const canvas = document.createElement('canvas'); const MAX_WIDTH = 250; const MAX_HEIGHT = 250;
         let width = img.width; let height = img.height;
-        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
-        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        setMeuLogo(dataUrl);
+        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+        canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+        setMeuLogo(canvas.toDataURL('image/jpeg', 0.8));
       }
       img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+    }; reader.readAsDataURL(file);
   };
 
   const salvarMeusHorarios = async (horaClicada) => {
-    let novosHorarios = [...meusHorarios];
-    if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
-    novosHorarios.sort(); setMeusHorarios(novosHorarios);
-    setSalvandoConfig(true);
+    let novosHorarios = [...meusHorarios]; if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
+    novosHorarios.sort(); setMeusHorarios(novosHorarios); setSalvandoConfig(true);
+    // ✅ CORRIGIDO: Adicionado console.error no catch
     try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
     setSalvandoConfig(false);
   };
 
   const salvarApenasLogo = async () => {
     setSalvandoConfig(true);
-    try { 
-      await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo }) }); 
-      alert("Logo atualizada com sucesso!");
-    } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
+    // ✅ CORRIGIDO: Adicionado console.error no catch
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo }) }); alert("Logo atualizada com sucesso!"); } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
     setSalvandoConfig(false);
   }
 
-  const adicionarServico = async () => {
-    if (!novoServico.nome || !novoServico.preco) return;
-    await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) });
-    setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarTudo();
-  };
+  const adicionarServico = async () => { if (!novoServico.nome || !novoServico.preco) return; await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) }); setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarTudo(); };
   const removerServico = async (id) => { await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
-
-  const adicionarFuncionario = async () => {
-    if (!novoFuncionario.nome) return;
-    await fetch(`${API_URL}/funcionarios`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoFuncionario) });
-    setNovoFuncionario({ nome: '', comissao: '' }); setMostrarFormFuncionario(false); carregarTudo();
-  };
-  const removerFuncionario = async (id) => {
-    if(!window.confirm('Deseja excluir este profissional da equipe?')) return;
-    await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo();
-  };
-
-  const confirmarVenda = async (e) => {
-    e.preventDefault(); if (!vendaServico) return;
-    console.log("Venda avulsa registrada para:", vendaNome || "Sem nome");
-    await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) });
-    setVendaNome(''); setVendaServico(null); setModalAberto(false); carregarTudo();
-  };
-
+  const adicionarFuncionario = async () => { if (!novoFuncionario.nome) return; await fetch(`${API_URL}/funcionarios`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoFuncionario) }); setNovoFuncionario({ nome: '', comissao: '' }); setMostrarFormFuncionario(false); carregarTudo(); };
+  const removerFuncionario = async (id) => { if(!window.confirm('Deseja excluir este profissional da equipe?')) return; await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
+  const confirmarVenda = async (e) => { e.preventDefault(); if (!vendaServico) return; await fetch(`${API_URL}/vendas`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ valor: parseFloat(vendaServico.preco) }) }); setVendaNome(''); setVendaServico(null); setModalAberto(false); carregarTudo(); };
+  
   const concluirAtendimento = async (agendamento) => {
-    await fetch(`${API_URL}/agendamentos/${agendamento.id}/concluir`, { method: 'POST', headers: headersAPI });
-    carregarTudo();
+    await fetch(`${API_URL}/agendamentos/${agendamento.id}/concluir`, { method: 'POST', headers: headersAPI }); carregarTudo();
     if (agendamento.cliente_whatsapp) {
-      const num = agendamento.cliente_whatsapp.replace(/\D/g, '');
-      const txt = `✨ Olá, ${agendamento.cliente_nome.split(' ')[0]}! Aqui é do ${usuario.nome}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
+      const num = agendamento.cliente_whatsapp.replace(/\D/g, ''); const txt = `✨ Olá, ${agendamento.cliente_nome.split(' ')[0]}! Aqui é do ${usuario.nome}.\n\nPassando para agradecer imensamente pela sua visita e confiança no nosso trabalho hoje! Esperamos que tenha tido uma experiência premium.\n\nVolte sempre! 🤝`;
       window.open(`https://wa.me/55${num}?text=${encodeURIComponent(txt)}`, '_blank');
     }
   };
 
-  const excluirEmpresa = async (id, nomeEmpresa) => {
-    if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir permanentemente o salão "${nomeEmpresa}"?\nTodos os dados, serviços e faturamento deles serão apagados.`)) return;
-    const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI });
-    if (res.ok) { alert("Removido com sucesso."); carregarTudo(); } else { alert("Erro ao excluir."); }
-  };
-
-  const enviarSuporteParaCEO = async (e) => {
-    e.preventDefault();
-    try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error("Falha ao salvar ticket", err); }
-    window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank');
-    setModalSuporte(false); setTextoSuporte('');
-  };
-
+  const excluirEmpresa = async (id, nomeEmpresa) => { if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir o salão "${nomeEmpresa}"?`)) return; const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI }); if (res.ok) { alert("Removido."); carregarTudo(); } else { alert("Erro ao excluir."); } };
+  const enviarSuporteParaCEO = async (e) => { e.preventDefault(); try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error(err); } window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank'); setModalSuporte(false); setTextoSuporte(''); };
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
+
+  if (bloqueado && telaAtiva === 'pagamento' && !usuario.is_ceo) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white items-center justify-center p-6 text-center relative overflow-hidden">
+         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-red-900/10 rounded-full blur-[120px] -z-10"></div>
+         <Lock size={64} className="text-red-500 mb-6" />
+         <h1 className="text-3xl font-['Playfair_Display'] text-white mb-4">Seu teste grátis acabou.</h1>
+         <p className="text-[#A8A8A8] max-w-md mb-10 text-sm leading-relaxed">Para continuar gerenciando sua agenda, faturamento e clientes na plataforma AURUM Premium, escolha seu plano abaixo:</p>
+         
+         {!qrCodeBase64 ? (
+           <div className="grid gap-6 w-full max-w-2xl">
+              <button onClick={() => gerarPix('autonomo')} disabled={carregandoPix} className="bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#D4AF37] p-6 rounded-3xl flex justify-between items-center transition-all group text-left">
+                <div>
+                  <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-1">Profissional Individual</span>
+                  <span className="text-xl font-['Playfair_Display'] text-white block">Plano Autônomo</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-[#D4AF37]">R$ 19,90</span>
+                  <span className="text-[10px] text-[#A8A8A8] block">/mês no Pix</span>
+                </div>
+              </button>
+              
+              <button onClick={() => gerarPix('equipe')} disabled={carregandoPix} className="bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
+                <div>
+                  <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Para Salões (Equipe)</span>
+                  <span className="text-xl font-['Playfair_Display'] text-[#0D0D0D] font-bold block">Plano Equipe VIP</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span>
+                  <span className="text-[10px] text-[#0D0D0D] opacity-80 block">/mês no Pix</span>
+                </div>
+              </button>
+              {carregandoPix && <p className="text-[#D4AF37] text-xs flex items-center justify-center gap-2 mt-4"><Loader2 className="animate-spin" size={16}/> Gerando PIX seguro...</p>}
+           </div>
+         ) : (
+           <div className="bg-[#1A1A1A] p-8 rounded-3xl border border-[#D4AF37] w-full max-w-md animate-slide-up flex flex-col items-center">
+              <h3 className="text-xl font-['Playfair_Display'] text-[#D4AF37] mb-2">Escaneie para Pagar</h3>
+              <p className="text-xs text-[#A8A8A8] mb-6">O sistema será liberado automaticamente após a confirmação do pagamento.</p>
+              
+              <div className="bg-white p-4 rounded-xl mb-6">
+                 <img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48" />
+              </div>
+              
+              <button onClick={() => { navigator.clipboard.writeText(qrCodeCopiaCola); alert('Código Pix copiado!'); }} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-xl text-sm hover:border-[#D4AF37] transition-colors flex justify-center items-center gap-2">
+                 <QrCode size={18} /> Copiar Código Pix
+              </button>
+              <button onClick={() => { setQrCodeBase64(null); setQrCodeCopiaCola(''); }} className="mt-4 text-xs text-[#6F6F6F] hover:text-white">Voltar e escolher outro plano</button>
+           </div>
+         )}
+         <button onClick={onLogout} className="mt-12 text-[#6F6F6F] text-xs hover:text-red-500">Sair da Conta</button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] font-['Inter'] text-white relative overflow-hidden">
@@ -390,6 +421,14 @@ function PainelProfissional({ token, usuario, onLogout }) {
         </div>
         <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] bg-[#0D0D0D] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center"><LogOut size={16} /></button>
       </header>
+
+      {!usuario.is_ceo && diasRestantes <= 3 && (
+         <div className="bg-red-900/40 text-red-200 p-3 text-xs text-center border-b border-red-900/50 flex justify-center items-center gap-2">
+           <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
+           Seu teste grátis acaba em {diasRestantes} {diasRestantes === 1 ? 'dia' : 'dias'}. 
+           <button onClick={() => { setBloqueado(true); setTelaAtiva('pagamento'); }} className="underline font-bold ml-1">Assinar Agora</button>
+         </div>
+      )}
 
       <main className="flex-1 p-6 pb-36 overflow-y-auto space-y-8">
         {telaAtiva === 'home' && (
