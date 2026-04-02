@@ -24,9 +24,9 @@ function LandingPage({ onGoToAuth }) {
 
       {/* 🌟 HERO SECTION (TOPO) */}
       <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
-        <img src={LOGO_AURUM} alt="AURUM Premium" className="w-40 h-40 md:w-56 md:h-56 rounded-[2rem] shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20" />
+        <img src={LOGO_AURUM} alt="AURUM Premium" className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20" />
         
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
           O Sistema Definitivo para Salões de <span className="text-[#D4AF37] italic">Alto Padrão</span>
@@ -75,7 +75,7 @@ function LandingPage({ onGoToAuth }) {
 
       {/* 🌟 PREÇOS (OS PLANOS) */}
       <section className="py-24 max-w-5xl mx-auto px-6 relative">
-         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-75 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
          <div className="text-center mb-16 space-y-4">
             <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Escolha sua Exclusividade</h2>
             <p className="text-[#A8A8A8] font-light">Sem taxas escondidas. Sem fidelidade.</p>
@@ -103,7 +103,7 @@ function LandingPage({ onGoToAuth }) {
             </div>
 
             {/* PLANO SALÃO (DESTAQUE) */}
-            <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
+            <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-4 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
                  <Star size={12} className="fill-[#0D0D0D]" /> Mais Escolhido
                </div>
