@@ -95,10 +95,10 @@ app.get('/api/assinatura', verificarToken, async (req, res) => {
 // ==========================================
 // 🤑 INTEGRAÇÃO MERCADO PAGO (TRAVADO EM R$ 24,99)
 // ==========================================
-const MERCADO_PAGO_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-682a69ec-155d-4c3d-8776-a320b5ca5f80'; 
+const MERCADO_PAGO_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-5859543563291720-040214-783927917fff7300e8f5d14b728cc61e-270036990'; 
 
 app.post('/api/gerar-pix', verificarToken, async (req, res) => {
-  const valor = 24.99; // VALOR ÚNICO FIXADO PARA ZERO MARGEM DE ERRO
+  const valor = 24.99; 
   
   try {
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
@@ -112,12 +112,17 @@ app.post('/api/gerar-pix', verificarToken, async (req, res) => {
         transaction_amount: valor,
         description: `AURUM PREMIUM - Assinatura Mensal`,
         payment_method_id: 'pix',
-        payer: { email: `cliente_${req.profissionalId}@aurum.com` },
+        payer: { 
+          email: `cliente_${req.profissionalId}@aurum.com`,
+          first_name: "Assinante",
+          last_name: "Premium" 
+        },
         external_reference: req.profissionalId.toString() 
       })
     });
 
     const data = await response.json();
+    console.log("📢 RESPOSTA DO MERCADO PAGO:", data);
     
     if (data.point_of_interaction && data.point_of_interaction.transaction_data) {
       res.json({ 
@@ -129,6 +134,7 @@ app.post('/api/gerar-pix', verificarToken, async (req, res) => {
       res.status(400).json({ erro_mp: true, mensagem: "Erro no MP", detalhes: data });
     }
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Falha ao gerar PIX' });
   }
 });

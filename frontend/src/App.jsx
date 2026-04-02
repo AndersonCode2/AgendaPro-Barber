@@ -1,15 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
 
-// ==========================================
-// 🌍 MÁQUINA DE VENDAS (LANDING PAGE)
-// ==========================================
 function LandingPage({ onGoToAuth }) {
   return (
     <div className="min-h-screen bg-[#080808] text-white font-['Inter'] overflow-x-hidden selection:bg-[#D4AF37] selection:text-black">
@@ -69,7 +66,6 @@ function LandingPage({ onGoToAuth }) {
         </div>
       </section>
 
-      {/* 🌟 PREÇO ÚNICO CENTRALIZADO */}
       <section className="py-24 max-w-5xl mx-auto px-6 relative">
          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-75 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
          <div className="text-center mb-16 space-y-4">
@@ -109,9 +105,6 @@ function LandingPage({ onGoToAuth }) {
   );
 }
 
-// ==========================================
-// 🔐 TELA DE AUTENTICAÇÃO
-// ==========================================
 function TelaAuth({ onLogin, onVoltar }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); 
@@ -171,9 +164,6 @@ function HomePublica({ onLogin }) {
   return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
 }
 
-// ==========================================
-// 💎 PAINEL PROTEGIDO (COM TRAVA DE ASSINATURA)
-// ==========================================
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
@@ -264,11 +254,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
       const res = await fetch(`${API_URL}/gerar-pix`, { method: 'POST', headers: headersAPI, body: JSON.stringify({}) });
       const data = await res.json();
       if (data.erro_mp) {
-        alert("O CEO ainda precisa configurar o Token do Mercado Pago no Servidor.");
+        // MENSAGEM ATUALIZADA PARA O SEU ERRO!
+        alert("O Mercado Pago recusou a geração do Pix. Verifique se o seu Access Token no backend está correto (O código longo).");
       } else {
         setQrCodeBase64(data.qr_code_base64); setQrCodeCopiaCola(data.qr_code_copia_cola);
       }
-    } catch (error) { console.error(error); alert("Erro ao gerar Pix"); }
+    } catch (error) { console.error(error); alert("Erro ao comunicar com o Mercado Pago."); }
     setCarregandoPix(false);
   };
 
@@ -319,7 +310,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const enviarSuporteParaCEO = async (e) => { e.preventDefault(); try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error(err); } window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank'); setModalSuporte(false); setTextoSuporte(''); };
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
-  // 🌟 MODAL DE PAGAMENTO (PLANO ÚNICO)
   const renderModalPagamento = () => (
     <div className={`fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 ${bloqueado ? 'animate-fade-in' : 'animate-slide-up'}`}>
       <div className="bg-[#1A1A1A] w-full max-w-xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl relative flex flex-col items-center">
@@ -336,7 +326,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
         {!qrCodeBase64 ? (
            <div className="w-full">
-              {/* BOTÃO ÚNICO DE PAGAMENTO */}
               <button onClick={() => gerarPix()} disabled={carregandoPix} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center transition-all shadow-[0_10px_40px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
                 <div>
                   <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Acesso Total Semanal/Mensal</span>
@@ -379,7 +368,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] bg-[#0D0D0D] text-[#A8A8A8] hover:text-[#ff4d4d] hover:border-[#ff4d4d] transition-colors rounded-full flex items-center justify-center"><LogOut size={16} /></button>
       </header>
 
-      {/* ⚠️ AVISO DE TESTE ACABANDO (COM BOTÃO DE PAGAR AGORA) */}
       {!usuario.is_ceo && diasRestantes <= 3 && diasRestantes >= 0 && !bloqueado && (
          <div className="bg-red-900/40 text-red-200 p-3 text-xs text-center border-b border-red-900/50 flex justify-center items-center gap-3">
            <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
@@ -478,7 +466,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
         {telaAtiva === 'config' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* 🌟 NOVA ÁREA DE ASSINATURA DENTRO DOS AJUSTES */}
             {!usuario.is_ceo && (
               <div className="mb-10 pb-8 border-b border-[#2A2A2A]">
                  <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-2">Sua Assinatura</h2>
