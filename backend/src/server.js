@@ -11,7 +11,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// 🌟 AUTO-SINCRONIZADOR (AGORA COM 30 DIAS DE TESTE)
+// 🌟 AUTO-SINCRONIZADOR
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -19,11 +19,10 @@ pool.connect().then(async () => {
       CREATE TABLE IF NOT EXISTS profissionais (id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, senha VARCHAR(255) NOT NULL, telefone VARCHAR(20), is_ceo BOOLEAN DEFAULT FALSE, data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS horarios_trabalho TEXT DEFAULT '08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00';
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS logo_url TEXT;
-      ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS plano VARCHAR(50) DEFAULT 'autonomo';
+      ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS plano VARCHAR(50) DEFAULT 'premium';
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS status_assinatura VARCHAR(20) DEFAULT 'trial';
       ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS data_vencimento TIMESTAMP;
       
-      -- Atualiza quem não tem vencimento para 30 dias
       UPDATE profissionais SET data_vencimento = CURRENT_TIMESTAMP + INTERVAL '30 days' WHERE data_vencimento IS NULL AND is_ceo = FALSE;
 
       CREATE TABLE IF NOT EXISTS servicos (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, preco DECIMAL(10,2) NOT NULL, tempo VARCHAR(50));
@@ -38,7 +37,7 @@ pool.connect().then(async () => {
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
-    console.log('✅ Banco de dados pronto para o Financeiro (30 Dias)!');
+    console.log('✅ Banco de dados pronto para o Financeiro Premium!');
   } catch (e) { console.error('Erro na sincronização:', e); }
 }).catch(err => console.error(err));
 
@@ -61,7 +60,6 @@ app.post('/api/cadastro', async (req, res) => {
     if (usuarioExiste.rows.length > 0) return res.status(400).json({ error: 'E-mail ou WhatsApp já em uso.' });
     const senhaHash = await bcrypt.hash(senha, await bcrypt.genSalt(10));
     const isCeo = email === 'codebyanderson@hotmail.com';
-    // 🌟 AQUI: CADASTROU, GANHOU 30 DIAS
     const result = await pool.query(`INSERT INTO profissionais (nome, email, senha, telefone, is_ceo, data_vencimento) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP + INTERVAL '30 days') RETURNING id, nome, email, is_ceo`, [nome, email, senhaHash, telefone, isCeo]);
     res.status(201).json({ usuario: result.rows[0], token: jwt.sign({ id: result.rows[0].id, is_ceo: isCeo }, JWT_SECRET, { expiresIn: '30d' }) });
   } catch (error) { res.status(500).json({ error: 'Erro no cadastro.' }); }
@@ -95,13 +93,12 @@ app.get('/api/assinatura', verificarToken, async (req, res) => {
 });
 
 // ==========================================
-// 🤑 INTEGRAÇÃO MERCADO PAGO - CHAVE ATIVA
+// 🤑 INTEGRAÇÃO MERCADO PAGO (TRAVADO EM R$ 24,99)
 // ==========================================
 const MERCADO_PAGO_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-682a69ec-155d-4c3d-8776-a320b5ca5f80'; 
 
 app.post('/api/gerar-pix', verificarToken, async (req, res) => {
-  const { plano } = req.body;
-  const valor = plano === 'equipe' ? 24.99 : 19.90;
+  const valor = 24.99; // VALOR ÚNICO FIXADO PARA ZERO MARGEM DE ERRO
   
   try {
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
@@ -113,10 +110,10 @@ app.post('/api/gerar-pix', verificarToken, async (req, res) => {
       },
       body: JSON.stringify({
         transaction_amount: valor,
-        description: `AURUM - Plano ${plano.toUpperCase()}`,
+        description: `AURUM PREMIUM - Assinatura Mensal`,
         payment_method_id: 'pix',
         payer: { email: `cliente_${req.profissionalId}@aurum.com` },
-        external_reference: req.profissionalId.toString() // ID do salão
+        external_reference: req.profissionalId.toString() 
       })
     });
 

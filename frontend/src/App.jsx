@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
+import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
@@ -69,52 +69,34 @@ function LandingPage({ onGoToAuth }) {
         </div>
       </section>
 
+      {/* 🌟 PREÇO ÚNICO CENTRALIZADO */}
       <section className="py-24 max-w-5xl mx-auto px-6 relative">
          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-75 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Escolha sua Exclusividade</h2>
-            <p className="text-[#A8A8A8] font-light">Comece hoje. 1 mês grátis. Sem fidelidade.</p>
+            <h2 className="text-3xl md:text-4xl font-['Playfair_Display'] text-white">Assinatura Exclusiva</h2>
+            <p className="text-[#A8A8A8] font-light">Todas as ferramentas liberadas. Sem taxas escondidas. Sem fidelidade.</p>
          </div>
-         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-[#1A1A1A] p-8 md:p-10 rounded-[2.5rem] border border-[#2A2A2A] flex flex-col hover:border-[#D4AF37]/30 transition-all">
-               <div className="mb-8">
-                 <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase mb-2 block">Para Profissionais Individuais</span>
-                 <h3 className="text-3xl font-['Playfair_Display'] text-white mb-4">Plano Autônomo</h3>
-                 <div className="flex items-end gap-1 mb-2">
-                   <span className="text-lg text-[#6F6F6F] font-bold pb-2">R$</span>
-                   <span className="text-5xl font-bold text-[#D4AF37]">19,90</span>
-                   <span className="text-sm text-[#6F6F6F] pb-2">/mês</span>
-                 </div>
+         
+         <div className="max-w-md mx-auto">
+            <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border border-[#D4AF37]/50 flex flex-col relative shadow-[0_0_50px_rgba(212,175,55,0.15)]">
+               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-6 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
+                 <Star size={12} className="fill-[#0D0D0D]" /> Acesso Total
                </div>
-               <div className="flex-1 space-y-4 mb-10">
-                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Link VIP de Agendamento</p>
-                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Sua Logo no Aplicativo</p>
-                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Controle de Caixa Diário</p>
-                 <p className="flex items-center gap-3 text-sm text-[#A8A8A8]"><CheckCircle2 size={18} className="text-[#D4AF37]"/> CRM (Lista de Clientes)</p>
-               </div>
-               <button onClick={onGoToAuth} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] text-white py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:border-[#D4AF37] transition-all">Testar Autônomo</button>
-            </div>
-
-            <div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-8 md:p-10 rounded-[2.5rem] border-2 border-[#D4AF37] flex flex-col relative shadow-[0_0_40px_rgba(212,175,55,0.15)] transform md:-translate-y-4">
-               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] px-4 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase flex items-center gap-1 shadow-lg">
-                 <Star size={12} className="fill-[#0D0D0D]" /> Mais Escolhido
-               </div>
-               <div className="mb-8">
-                 <span className="text-[#D4AF37] text-[10px] font-bold tracking-widest uppercase mb-2 block">Para Salões e Barbearias</span>
-                 <h3 className="text-3xl font-['Playfair_Display'] text-white mb-4">Plano Equipe VIP</h3>
-                 <div className="flex items-end gap-1 mb-2">
-                   <span className="text-lg text-[#D4AF37] font-bold pb-2 opacity-80">R$</span>
-                   <span className="text-5xl font-bold text-[#E6C76B]">24,99</span>
+               <div className="mb-8 text-center mt-2">
+                 <h3 className="text-3xl font-['Playfair_Display'] text-white mb-4">AURUM Premium</h3>
+                 <div className="flex items-end justify-center gap-1 mb-2">
+                   <span className="text-xl text-[#D4AF37] font-bold pb-2 opacity-80">R$</span>
+                   <span className="text-6xl font-bold text-[#E6C76B]">24,99</span>
                    <span className="text-sm text-[#A8A8A8] pb-2">/mês</span>
                  </div>
                </div>
-               <div className="flex-1 space-y-4 mb-10">
-                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={18} className="text-[#D4AF37]"/> Tudo do Plano Autônomo</p>
-                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cadastro de Profissionais Ilimitado</p>
-                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cliente escolhe quem vai atender</p>
-                 <p className="flex items-center gap-3 text-sm text-white"><TrendingUp size={18} className="text-[#D4AF37]"/> Cálculo Automático de Comissões</p>
+               <div className="flex-1 space-y-5 mb-10">
+                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={20} className="text-[#D4AF37]"/> Link VIP de Agendamento</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={20} className="text-[#D4AF37]"/> Cadastro de Profissionais Ilimitado</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={20} className="text-[#D4AF37]"/> Cálculo Automático de Comissões</p>
+                 <p className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={20} className="text-[#D4AF37]"/> Fluxo de Caixa e CRM de Clientes</p>
                </div>
-               <button onClick={onGoToAuth} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-4 rounded-2xl font-bold tracking-widest uppercase text-xs hover:scale-105 transition-transform shadow-lg">Testar Equipe VIP</button>
+               <button onClick={onGoToAuth} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-5 rounded-2xl font-bold tracking-widest uppercase text-sm hover:scale-105 transition-transform shadow-lg">Começar 1 Mês Grátis</button>
             </div>
          </div>
       </section>
@@ -197,7 +179,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [modalAberto, setModalAberto] = useState(false);
   const [mostrarFormServico, setMostrarFormServico] = useState(false);
 
-  // 🌟 ESTADOS DA ASSINATURA
   const [bloqueado, setBloqueado] = useState(false);
   const [diasRestantes, setDiasRestantes] = useState(30);
   const [modalPagamento, setModalPagamento] = useState(false);
@@ -277,10 +258,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   useEffect(() => { carregarTudo(); const intervalo = setInterval(carregarTudo, 30000); return () => clearInterval(intervalo); }, []);
 
-  const gerarPix = async (planoEscolhido) => {
+  const gerarPix = async () => {
     setCarregandoPix(true);
     try {
-      const res = await fetch(`${API_URL}/gerar-pix`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ plano: planoEscolhido }) });
+      const res = await fetch(`${API_URL}/gerar-pix`, { method: 'POST', headers: headersAPI, body: JSON.stringify({}) });
       const data = await res.json();
       if (data.erro_mp) {
         alert("O CEO ainda precisa configurar o Token do Mercado Pago no Servidor.");
@@ -338,10 +319,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const enviarSuporteParaCEO = async (e) => { e.preventDefault(); try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error(err); } window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank'); setModalSuporte(false); setTextoSuporte(''); };
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
-  // 🌟 MODAL DE PAGAMENTO (Pode ser aberto pelo Menu Ajustes ou pelo Bloqueio)
+  // 🌟 MODAL DE PAGAMENTO (PLANO ÚNICO)
   const renderModalPagamento = () => (
     <div className={`fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 ${bloqueado ? 'animate-fade-in' : 'animate-slide-up'}`}>
-      <div className="bg-[#1A1A1A] w-full max-w-2xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl relative flex flex-col items-center">
+      <div className="bg-[#1A1A1A] w-full max-w-xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl relative flex flex-col items-center">
         {!bloqueado && (
           <button onClick={() => { setModalPagamento(false); setQrCodeBase64(null); }} className="absolute top-6 right-6 text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-2 rounded-full transition-colors"><X size={18}/></button>
         )}
@@ -351,28 +332,24 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <h2 className="text-3xl font-['Playfair_Display'] text-white mb-2 text-center">
           {bloqueado ? "Sua assinatura venceu." : "Renovar Assinatura"}
         </h2>
-        <p className="text-[#A8A8A8] text-sm mb-8 text-center max-w-md">Garanta seu acesso ininterrupto à plataforma AURUM Premium escolhendo um dos planos abaixo.</p>
+        <p className="text-[#A8A8A8] text-sm mb-8 text-center max-w-md">Garanta seu acesso ininterrupto à plataforma AURUM Premium.</p>
 
         {!qrCodeBase64 ? (
-           <div className="grid md:grid-cols-2 gap-4 w-full">
-              <button onClick={() => gerarPix('autonomo')} disabled={carregandoPix} className="bg-[#0D0D0D] border border-[#2A2A2A] hover:border-[#D4AF37] p-6 rounded-3xl flex flex-col items-start transition-all group text-left">
-                <span className="text-[#A8A8A8] text-[10px] font-bold tracking-widest uppercase block mb-1">Profissional Individual</span>
-                <span className="text-xl font-['Playfair_Display'] text-white block mb-4">Plano Autônomo</span>
-                <div className="mt-auto">
-                  <span className="text-2xl font-bold text-[#D4AF37]">R$ 19,90</span><span className="text-[10px] text-[#A8A8A8]">/mês no Pix</span>
+           <div className="w-full">
+              {/* BOTÃO ÚNICO DE PAGAMENTO */}
+              <button onClick={() => gerarPix()} disabled={carregandoPix} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center transition-all shadow-[0_10px_40px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
+                <div>
+                  <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Acesso Total Semanal/Mensal</span>
+                  <span className="text-2xl font-['Playfair_Display'] text-[#0D0D0D] font-bold block">AURUM Premium</span>
                 </div>
-              </button>
-              
-              <button onClick={() => gerarPix('equipe')} disabled={carregandoPix} className="bg-linear-to-br from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex flex-col items-start transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:scale-[1.02] text-left">
-                <span className="text-[#0D0D0D] text-[10px] font-bold tracking-widest uppercase block mb-1">Para Salões (Equipe)</span>
-                <span className="text-xl font-['Playfair_Display'] text-[#0D0D0D] font-bold block mb-4">Plano Equipe VIP</span>
-                <div className="mt-auto">
-                  <span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span><span className="text-[10px] text-[#0D0D0D] opacity-80">/mês no Pix</span>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-[#0D0D0D]">R$ 24,99</span>
+                  <span className="text-xs text-[#0D0D0D] opacity-80 block">no Pix</span>
                 </div>
               </button>
            </div>
          ) : (
-           <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#D4AF37] w-full max-w-md flex flex-col items-center">
+           <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#D4AF37] w-full flex flex-col items-center">
               <h3 className="text-xl font-['Playfair_Display'] text-[#D4AF37] mb-2">Escaneie para Pagar</h3>
               <p className="text-xs text-[#A8A8A8] mb-6 text-center">O sistema será renovado por 30 dias na hora!</p>
               <div className="bg-white p-4 rounded-xl mb-6"><img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48" /></div>
