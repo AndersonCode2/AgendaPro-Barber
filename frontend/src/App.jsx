@@ -17,8 +17,9 @@ function LandingPage({ onGoToAuth }) {
       {/* 🌟 CABEÇALHO */}
       <header className="p-6 flex justify-between items-center max-w-6xl mx-auto w-full animate-fade-in">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)] overflow-hidden flex items-center justify-center">
-            <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-cover scale-[1.4]" />
+          {/* CORREÇÃO DO ENCAIXE DA LOGO */}
+          <div className="w-10 h-10 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_15px_rgba(212,175,55,0.2)] bg-[#0D0D0D] flex items-center justify-center p-1">
+            <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-contain" />
           </div>
           <span className="font-['Playfair_Display'] font-bold text-xl tracking-widest text-[#D4AF37]">AURUM</span>
         </div>
@@ -29,8 +30,9 @@ function LandingPage({ onGoToAuth }) {
       <main className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center space-y-10 animate-slide-up relative">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-[#D4AF37]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
-        <div className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20 overflow-hidden flex items-center justify-center">
-          <img src={LOGO_AURUM} alt="AURUM Premium" className="w-full h-full object-cover scale-[1.4]" />
+        {/* CORREÇÃO DO ENCAIXE DA LOGO GIGANTE */}
+        <div className="w-40 h-40 md:w-56 md:h-56 rounded-4xl shadow-[0_0_80px_rgba(212,175,55,0.3)] border border-[#D4AF37]/20 bg-[#0D0D0D] flex items-center justify-center p-3">
+          <img src={LOGO_AURUM} alt="AURUM Premium" className="w-full h-full object-contain" />
         </div>
         
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] text-white max-w-4xl leading-tight">
@@ -131,10 +133,10 @@ function LandingPage({ onGoToAuth }) {
          </div>
       </section>
 
-      {/* FOOTER */}
+      {/* FOOTER COM LOGO AJUSTADA */}
       <footer className="border-t border-[#2A2A2A] bg-[#0D0D0D] py-8 text-center">
-        <div className="w-8 h-8 rounded-lg mx-auto mb-4 overflow-hidden flex items-center justify-center opacity-50 grayscale">
-          <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-cover scale-[1.4]" />
+        <div className="w-12 h-12 rounded-lg mx-auto mb-4 flex items-center justify-center opacity-50 grayscale">
+          <img src={LOGO_AURUM} alt="AURUM" className="w-full h-full object-contain" />
         </div>
         <p className="text-[#6F6F6F] text-xs">© 2026 AURUM Premium SaaS. Todos os direitos reservados.</p>
       </footer>
@@ -178,9 +180,11 @@ function TelaAuth({ onLogin, onVoltar }) {
       <button onClick={onVoltar} className="absolute top-6 left-6 text-[#A8A8A8] hover:text-[#D4AF37] flex items-center gap-2 text-sm transition-colors"><ArrowLeft size={18}/> Voltar</button>
       
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
+        
+        {/* CORREÇÃO DO ENCAIXE DA LOGO NA TELA DE LOGIN */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30 overflow-hidden flex items-center justify-center">
-            <img src={LOGO_AURUM} alt="AURUM Logo" className="w-full h-full object-cover scale-[1.4]" />
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl shadow-[0_0_50px_rgba(212,175,55,0.25)] mb-4 border border-[#D4AF37]/30 bg-[#0D0D0D] flex items-center justify-center p-2">
+            <img src={LOGO_AURUM} alt="AURUM Logo" className="w-full h-full object-contain" />
           </div>
         </div>
 
@@ -325,14 +329,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const salvarMeusHorarios = async (horaClicada) => {
     let novosHorarios = [...meusHorarios]; if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
     novosHorarios.sort(); setMeusHorarios(novosHorarios); setSalvandoConfig(true);
-    // ✅ CORRIGIDO: Adicionado console.error no catch
     try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
     setSalvandoConfig(false);
   };
 
   const salvarApenasLogo = async () => {
     setSalvandoConfig(true);
-    // ✅ CORRIGIDO: Adicionado console.error no catch
     try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo }) }); alert("Logo atualizada com sucesso!"); } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
     setSalvandoConfig(false);
   }
