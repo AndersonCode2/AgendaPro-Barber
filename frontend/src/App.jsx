@@ -167,9 +167,20 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <div className="fixed inset-0 bg-black/80 flex justify-center items-end z-50 animate-fade-in"><div className="bg-[#1A1A1A] w-full rounded-t-[2.5rem] p-8 border-t border-[#2A2A2A] animate-slide-up"><div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-['Playfair_Display'] text-white">Venda Manual</h2><button onClick={() => setModalAberto(false)} className="text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-2 rounded-full"><X size={20}/></button></div><form onSubmit={confirmarVenda} className="space-y-6"><div><input type="text" placeholder="Nome do cliente (Opcional)" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-5 text-white rounded-2xl outline-none" value={vendaNome} onChange={(e) => setVendaNome(e.target.value)} /></div><div><label className="text-xs text-[#A8A8A8] uppercase mb-3 block">Serviço/Produto</label><div className="flex flex-wrap gap-3">{servicos.map((item) => (<button type="button" key={item.id} onClick={() => setVendaServico(item)} className={`px-5 py-3 rounded-xl border text-sm transition-all ${vendaServico?.id === item.id ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37]' : 'bg-[#0D0D0D] text-[#A8A8A8] border-[#2A2A2A]'}`}>{item.nome}</button>))}</div></div>{vendaServico && (<div className="bg-[#0D0D0D] p-5 rounded-2xl flex justify-between items-center mt-4"><span className="text-[#A8A8A8]">Valor a receber:</span><span className="text-[#D4AF37] text-2xl">R$ {parseFloat(vendaServico.preco).toFixed(2)}</span></div>)}<button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-2xl transition-all mt-4 ${vendaServico ? 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-bold uppercase text-sm">Receber</span></button></form></div></div>
       )}
 
+      {/* CABEÇALHO ATUALIZADO DO CEO */}
       <header className="bg-[#1A1A1A] p-6 flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
-        <div className="flex items-center gap-4">{meuLogo && <img src={meuLogo} alt="Logo" className="w-12 h-12 rounded-full object-cover border border-[#D4AF37]" />}<div><h1 className="text-2xl font-bold font-['Playfair_Display'] text-[#D4AF37]">{usuario.nome}</h1><p className="text-[10px] tracking-widest text-[#A8A8A8] uppercase">Validade: {diasRestantes} dias</p></div></div>
-        <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] rounded-full flex items-center justify-center text-[#A8A8A8]"><LogOut size={16}/></button>
+        <div className="flex items-center gap-4">
+          {meuLogo && <img src={meuLogo} alt="Logo" className="w-12 h-12 rounded-full object-cover border border-[#D4AF37]" />}
+          <div>
+            <h1 className="text-2xl font-bold font-['Playfair_Display'] text-[#D4AF37]">{usuario.nome}</h1>
+            <p className="text-[10px] tracking-widest text-[#A8A8A8] uppercase">
+              {usuario.is_ceo ? 'PAINEL MASTER CEO' : `Validade: ${diasRestantes} dias`}
+            </p>
+          </div>
+        </div>
+        <button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] rounded-full flex items-center justify-center text-[#A8A8A8] hover:text-white transition-colors">
+          <LogOut size={16}/>
+        </button>
       </header>
 
       <main className="flex-1 p-6 pb-36 space-y-8 overflow-y-auto">
@@ -256,20 +267,33 @@ function PainelProfissional({ token, usuario, onLogout }) {
           </div>
         )}
 
-        {/* TELA 3: AGENDA */}
+        {/* TELA 3: AGENDA ATUALIZADA (SEM VÍRGULAS FEIAS) */}
         {telaAtiva === 'agenda' && (
           <div className="space-y-6 animate-fade-in">
              <h2 className="text-2xl font-['Playfair_Display'] text-white mb-6">Agenda de Hoje</h2>
-             {agendamentos.length === 0 ? <p className="text-[#6F6F6F] text-center py-8">Agenda livre.</p> : agendamentos.map(ag => (
+             {agendamentos.length === 0 ? <p className="text-[#6F6F6F] text-center py-8">Agenda livre.</p> : agendamentos.map(ag => {
+                
+                // Lógica de visual para o Tempo Estendido
+                const horariosArray = ag.horario ? ag.horario.split(',') : [];
+                const horaPrincipal = horariosArray[0];
+                const blocosExtras = horariosArray.length > 1;
+
+                return (
                 <div key={ag.id} className="bg-[#1A1A1A] rounded-3xl border border-[#2A2A2A] overflow-hidden">
-                  <div className="bg-[#0D0D0D] px-6 py-4 border-b border-[#2A2A2A] flex justify-between items-center"><span className="text-[#D4AF37] text-xl font-bold">{ag.horario}</span><span className="text-xs text-[#6F6F6F]">{ag.data_reserva}</span></div>
+                  <div className="bg-[#0D0D0D] px-6 py-4 border-b border-[#2A2A2A] flex justify-between items-center">
+                    <span className="text-[#D4AF37] text-xl font-bold flex items-center gap-3">
+                       {horaPrincipal} 
+                       {blocosExtras && <span className="text-[9px] text-[#A8A8A8] font-normal tracking-widest uppercase border border-[#2A2A2A] px-2 py-1 rounded bg-[#1A1A1A] ml-2">Tempo Estendido</span>}
+                    </span>
+                    <span className="text-xs text-[#6F6F6F]">{ag.data_reserva}</span>
+                  </div>
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4"><div><p className="text-lg font-medium">{ag.cliente_nome}</p><p className="text-[#A8A8A8] text-sm">{ag.servico_nome}</p></div><span className="text-xl">R$ {parseFloat(ag.valor).toFixed(2)}</span></div>
                     {ag.funcionario_nome && <div className="mb-4 text-xs bg-[#2A2A2A] inline-block px-2 py-1 rounded text-[#D4AF37]">Profissional: {ag.funcionario_nome}</div>}
-                    <button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-3 rounded-xl flex items-center justify-center gap-2"><CheckCircle2/> Finalizar Atendimento</button>
+                    <button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors"><CheckCircle2/> Finalizar Atendimento</button>
                   </div>
                 </div>
-              ))}
+              )})}
           </div>
         )}
 
