@@ -121,6 +121,7 @@ export default function PaginaCliente() {
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   };
 
+  // 🧠 INTELIGÊNCIA DE AGENDA: Bloqueia horários baseado no tempo do serviço
   const finalizarAgendamento = async (e) => {
     e.preventDefault();
     if (!cliente.nome || cliente.whatsapp.length < 10) {
@@ -129,6 +130,27 @@ export default function PaginaCliente() {
     }
 
     setEnviando(true);
+    
+    // Calcula quantos slots de tempo precisam ser bloqueados
+    const tempoServico = servicoSelecionado.tempo.toLowerCase();
+    let slotsNecessarios = 1; // Padrão 1 slot (ex: 1 hora ou 30 min se for o intervalo do salão)
+    if (tempoServico.includes('2h') || tempoServico.includes('2 h') || tempoServico.includes('120')) slotsNecessarios = 2;
+    if (tempoServico.includes('3h') || tempoServico.includes('3 h') || tempoServico.includes('180')) slotsNecessarios = 3;
+
+    // Acha o horário que o cliente clicou na grade do salão
+    const indexHorario = salao.horarios_trabalho.indexOf(horarioSelecionado);
+    let horariosParaBloquear = [horarioSelecionado];
+    
+    // Se precisar de mais slots, puxa os próximos horários da grade do salão
+    for (let i = 1; i < slotsNecessarios; i++) {
+       if (salao.horarios_trabalho[indexHorario + i]) {
+           horariosParaBloquear.push(salao.horarios_trabalho[indexHorario + i]);
+       }
+    }
+    
+    // Junta tudo (ex: "14:00,15:00") para enviar pro banco
+    const horarioPayload = horariosParaBloquear.join(',');
+
     const payload = {
       id_profissional,
       nome: cliente.nome,
@@ -136,7 +158,7 @@ export default function PaginaCliente() {
       nascimento: cliente.nascimento,
       servico_nome: servicoSelecionado.nome,
       data_reserva: formatarDataBR(dataSelecionada),
-      horario: horarioSelecionado,
+      horario: horarioPayload, // Enviando os blocos travados!
       valor: servicoSelecionado.preco,
       funcionario_id: funcionarioSelecionado ? funcionarioSelecionado.id : null,
       funcionario_nome: funcionarioSelecionado ? funcionarioSelecionado.nome : null
@@ -187,7 +209,7 @@ export default function PaginaCliente() {
         </div>
         <h1 className="text-3xl font-['Playfair_Display'] text-white mb-2">Reserva Confirmada!</h1>
         <p className="text-[#A8A8A8] text-sm max-w-sm mb-8 font-light leading-relaxed">
-          Sua experiência no <strong className="text-white">{salao.nome}</strong> foi agendada com sucesso para <strong className="text-white">{formatarDataBR(dataSelecionada)} às {horarioSelecionado}</strong>.
+          Sua experiência no <strong className="text-white">{salao.nome}</strong> foi agendada com sucesso.
         </p>
         <button onClick={() => window.location.reload()} className="text-[#D4AF37] border border-[#D4AF37] px-8 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors">
           Fazer novo agendamento

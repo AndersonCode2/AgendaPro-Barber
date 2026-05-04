@@ -36,8 +36,11 @@ pool.connect().then(async () => {
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+      
+      -- NOVA TABELA: DESPESAS
+      CREATE TABLE IF NOT EXISTS despesas (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, descricao VARCHAR(255) NOT NULL, valor DECIMAL(10,2) NOT NULL, data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     `);
-    console.log('✅ Banco de dados sincronizado!');
+    console.log('✅ Banco de dados V2 (Despesas) sincronizado!');
   } catch (e) { console.error('Erro sincronização:', e); }
 }).catch(err => console.error(err));
 
@@ -91,7 +94,7 @@ app.get('/api/assinatura', verificarToken, async (req, res) => {
 // ==========================================
 // 🤑 MERCADO PAGO E WEBHOOK
 // ==========================================
-const MERCADO_PAGO_TOKEN = process.env.MP_ACCESS_TOKEN || 'SUA_CHAVE_AQUI'; 
+const MERCADO_PAGO_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-5859543563291720-040214-783927917fff7300e8f5d14b728cc61e-270036990'; 
 
 app.post('/api/gerar-pix', verificarToken, async (req, res) => {
   const valor = 24.99; 
@@ -136,33 +139,47 @@ app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => 
       GROUP BY p.id 
       ORDER BY p.data_cadastro DESC
     `); 
-    res.json({ 
-      totalEmpresas: empresas.rows.length, 
-      faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), 
-      empresas: empresas.rows 
-    }); 
+    res.json({ totalEmpresas: empresas.rows.length, faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), empresas: empresas.rows }); 
   } catch (error) { res.status(500).json({ error: 'Erro CEO' }); } 
 });
-
-// 🚀 NOVA ROTA: LIBERAÇÃO MANUAL PELO CEO
 app.post('/api/ceo/usuarios/:id/renovar', verificarToken, verificarCEO, async (req, res) => {
-  try {
-    await pool.query(`
-      UPDATE profissionais 
-      SET status_assinatura = 'pago', 
-          data_vencimento = COALESCE(data_vencimento, CURRENT_TIMESTAMP) + INTERVAL '30 days' 
-      WHERE id = $1
-    `, [req.params.id]);
-    res.json({ message: 'Acesso renovado com sucesso!' });
-  } catch (error) { res.status(500).json({ error: 'Erro ao renovar manualmente' }); }
+  try { await pool.query(`UPDATE profissionais SET status_assinatura = 'pago', data_vencimento = COALESCE(data_vencimento, CURRENT_TIMESTAMP) + INTERVAL '30 days' WHERE id = $1`, [req.params.id]); res.json({ message: 'Acesso renovado com sucesso!' }); } catch (error) { res.status(500).json({ error: 'Erro ao renovar manualmente' }); }
 });
-
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => { try { await pool.query('DELETE FROM profissionais WHERE id = $1 AND is_ceo = FALSE', [req.params.id]); res.json({ message: 'Excluído' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/api/ceo/tickets', verificarToken, verificarCEO, async (req, res) => { try { const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC"); res.json(result.rows); } catch(e) { res.status(500).json({ error: 'Erro tickets' }); } });
 app.delete('/api/ceo/tickets/:id', verificarToken, verificarCEO, async (req, res) => { try { await pool.query("UPDATE tickets SET status = 'resolvido' WHERE id = $1", [req.params.id]); res.json({ message: 'Resolvido' }); } catch(e) { res.status(500).json({ error: 'Erro fechar' }); } });
 
-// ROTAS DO PROFISSIONAL
-app.get('/api/dashboard', verificarToken, async (req, res) => { try { const result = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]); res.json({ ganhoDia: parseFloat(result.rows[0].ganho_dia), qtdAtendimentos: parseInt(result.rows[0].qtd_atendimentos) }); } catch (error) { res.status(500).json({ error: 'Erro dash' }); } });
+// ==========================================
+// ROTAS DO PROFISSIONAL (V2.0 - COM GRÁFICOS E DESPESAS)
+// ==========================================
+app.get('/api/dashboard', verificarToken, async (req, res) => { 
+  try { 
+    const resultDia = await pool.query('SELECT COALESCE(SUM(valor), 0) as ganho_dia, COUNT(id) as qtd_atendimentos FROM vendas WHERE profissional_id = $1 AND DATE(data_venda) = CURRENT_DATE', [req.profissionalId]); 
+    
+    // Gráfico de 7 dias (JS puro para evitar erros de SQL em bancos diferentes)
+    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate() - 6);
+    const vendas7Dias = await pool.query('SELECT valor, data_venda FROM vendas WHERE profissional_id = $1 AND data_venda >= $2', [req.profissionalId, seteDiasAtras.toISOString().split('T')[0]]);
+    
+    let chartData = [];
+    for(let i=6; i>=0; i--) {
+      let d = new Date(); d.setDate(d.getDate() - i);
+      let dataString = d.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+      let soma = vendas7Dias.rows.filter(v => new Date(v.data_venda).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) === dataString).reduce((acc, curr) => acc + parseFloat(curr.valor), 0);
+      chartData.push({ data: dataString, valor: soma });
+    }
+
+    res.json({ 
+      ganhoDia: parseFloat(resultDia.rows[0].ganho_dia), 
+      qtdAtendimentos: parseInt(resultDia.rows[0].qtd_atendimentos),
+      grafico7Dias: chartData
+    }); 
+  } catch (error) { console.error(error); res.status(500).json({ error: 'Erro dash' }); } 
+});
+
+app.get('/api/despesas', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT * FROM despesas WHERE profissional_id = $1 ORDER BY data_criacao DESC LIMIT 50', [req.profissionalId])).rows); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/api/despesas', verificarToken, async (req, res) => { try { await pool.query('INSERT INTO despesas (profissional_id, descricao, valor) VALUES ($1, $2, $3)', [req.profissionalId, req.body.descricao, req.body.valor]); res.json({ message: 'Despesa salva' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.delete('/api/despesas/:id', verificarToken, async (req, res) => { try { await pool.query('DELETE FROM despesas WHERE id = $1 AND profissional_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removida' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+
 app.get('/api/funcionarios', verificarToken, async (req, res) => { try { res.json((await pool.query('SELECT * FROM funcionarios WHERE salao_id = $1 ORDER BY id DESC', [req.profissionalId])).rows); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/api/funcionarios', verificarToken, async (req, res) => { try { res.status(201).json((await pool.query('INSERT INTO funcionarios (salao_id, nome, comissao) VALUES ($1, $2, $3) RETURNING *', [req.profissionalId, req.body.nome, parseFloat(req.body.comissao || 0)])).rows[0]); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/api/funcionarios/:id', verificarToken, async (req, res) => { try { await pool.query('DELETE FROM funcionarios WHERE id = $1 AND salao_id = $2', [req.params.id, req.profissionalId]); res.json({ message: 'Removido' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
