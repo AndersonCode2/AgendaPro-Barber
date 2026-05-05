@@ -6,6 +6,7 @@ import PaginaCliente from './PaginaCliente';
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
 
+// 1. LANDING PAGE
 function LandingPage({ onGoToAuth }) {
   return (
     <div className="min-h-screen bg-[#080808] text-white font-['Inter'] overflow-x-hidden selection:bg-[#D4AF37] selection:text-black">
@@ -25,6 +26,7 @@ function LandingPage({ onGoToAuth }) {
   );
 }
 
+// 2. TELA AUTH
 function TelaAuth({ onLogin, onVoltar }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); const [telefone, setTelefone] = useState(''); const [senha, setSenha] = useState('');
@@ -62,6 +64,14 @@ function TelaAuth({ onLogin, onVoltar }) {
   );
 }
 
+// 3. HOME PUBLICA
+function HomePublica({ onLogin }) {
+  const [mostrarAuth, setMostrarAuth] = useState(false);
+  if (mostrarAuth) return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
+  return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
+}
+
+// 4. PAINEL PROFISSIONAL
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
@@ -135,9 +145,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const removerFuncionario = async (id) => { if(!window.confirm('Deseja excluir?')) return; await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
   const salvarMeusHorarios = async (horaClicada) => { let novosHorarios = [...meusHorarios]; if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada); novosHorarios.sort(); setMeusHorarios(novosHorarios); try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); } };
 
-  // ===============================================
-  // CORREÇÃO: Variáveis restabelecidas corretamente!
-  // ===============================================
   const safeHistorico = Array.isArray(historicoCaixa) ? historicoCaixa : [];
   const safeDespesas = Array.isArray(despesas) ? despesas : [];
   const safeGrafico = Array.isArray(grafico) ? grafico : [];
@@ -215,6 +222,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
 function NavBtn({ icon, active, onClick, title, isMaster }) { return (<button onClick={onClick} className={`flex flex-col items-center justify-center p-2 transition-colors ${active ? (isMaster ? 'text-red-500' : 'text-[#D4AF37]') : 'text-[#6F6F6F] hover:text-[#A8A8A8]'}`}>{icon}<span className="text-[9px] mt-1 uppercase font-bold tracking-widest">{title}</span></button>); }
 
+// 5. SISTEMA PRINCIPAL
 function SistemaPrincipal() {
   const [t, setT] = useState(null); 
   const [u, setU] = useState(null);
@@ -225,7 +233,7 @@ function SistemaPrincipal() {
   return <HomePublica onLogin={(nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); }} />;
 }
 
-// Roteador Master
+// 6. ROTEADOR MASTER
 export default function App() {
   const caminho = window.location.pathname;
   if (caminho.startsWith('/agendar/')) {
