@@ -14,7 +14,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false } 
 });
 
-// 🌟 SINCRONIZADOR AUTOMÁTICO
+const JWT_SECRET = process.env.JWT_SECRET || 'aurum_secret_2026';
+
+// 🌟 SINCRONIZADOR DE TABELAS
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -32,40 +34,40 @@ pool.connect().then(async () => {
         data_vencimento TIMESTAMP DEFAULT CURRENT_TIMESTAMP + INTERVAL '30 days'
       );
     `);
-  } catch (err) { console.error('Erro sincronização:', err); }
+  } catch (err) { console.error('Erro na sincronização:', err); }
 });
 
-// --- ROTA CEO: LISTAR E RENOVAR ---
+// --- ROTAS DO CEO (ADMINISTRAÇÃO MASTER) ---
 app.get('/api/admin/profissionais', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, nome, email, data_vencimento FROM profissionais WHERE is_ceo = false ORDER BY id DESC');
     res.json(result.rows);
-  } catch (error) { res.status(500).json({ error: 'Erro ao listar' }); }
+  } catch (err) { res.status(500).json({ error: 'Erro ao listar empresas' }); }
 });
 
-app.post('/api/admin/renovar-plano', async (req, res) => {
-  const { profissional_id } = req.body;
+app.post('/api/admin/renovar', async (req, res) => {
+  const { id } = req.body;
   try {
-    const p = await pool.query('SELECT data_vencimento FROM profissionais WHERE id = $1', [profissional_id]);
-    if (p.rows.length === 0) return res.status(404).json({ error: 'Não encontrado' });
-    let novaData = new Date(p.rows[0].data_vencimento || new Date());
-    novaData.setDate(novaData.getDate() + 30); 
-    await pool.query('UPDATE profissionais SET data_vencimento = $1 WHERE id = $2', [novaData, profissional_id]);
-    res.json({ message: 'Sucesso', nova_data: novaData });
-  } catch (error) { res.status(500).json({ error: 'Erro ao renovar' }); }
+    const query = "UPDATE profissionais SET data_vencimento = COALESCE(data_vencimento, CURRENT_TIMESTAMP) + INTERVAL '30 days' WHERE id = $1 RETURNING data_vencimento";
+    const result = await pool.query(query, [id]);
+    res.json({ success: true, nova_data: result.rows[0].data_vencimento });
+  } catch (err) { res.status(500).json({ error: 'Erro ao renovar plano' }); }
 });
 
 // --- ROTA DE AGENDAMENTO (MULTI-SERVIÇOS) ---
 app.post('/api/public/agendamentos', async (req, res) => {
-  const { id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor } = req.body;
+  const { id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome } = req.body;
   try {
-    const result = await pool.query(
-      'INSERT INTO agendamentos (profissional_id, cliente_nome, cliente_whatsapp, servico_nome, data_reserva, horario, valor) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor]
-    );
+    const query = `
+      INSERT INTO agendamentos 
+      (profissional_id, cliente_nome, cliente_whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+    `;
+    const result = await pool.query(query, [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id || null, funcionario_nome || null]);
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: 'Erro agendamento' }); }
+  } catch (err) { res.status(500).json({ error: 'Erro ao salvar agendamento' }); }
 });
 
-// (Aqui seguem suas outras rotas de login/cadastro/dashboard...)
-app.listen(process.env.PORT || 10000, () => console.log('🚀 API ONLINE'));
+// (Aqui você mantém as rotas de LOGIN e CADASTRO originais...)
+
+app.listen(process.env.PORT || 10000, () => console.log('🚀 API AURUM ONLINE'));
