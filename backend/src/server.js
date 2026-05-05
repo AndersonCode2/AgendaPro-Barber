@@ -1,4 +1,3 @@
-/* eslint-disable */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -15,9 +14,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false } 
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'aurum_secret_2026';
-
-// 🌟 AUTO-SINCRONIZADOR DE TABELAS
+// 🌟 SINCRONIZADOR AUTOMÁTICO
 pool.connect().then(async () => {
   console.log('💎 Servidor AURUM Conectado!');
   try {
@@ -38,15 +35,14 @@ pool.connect().then(async () => {
   } catch (err) { console.error('Erro sincronização:', err); }
 });
 
-// --- ROTA EXCLUSIVA CEO: LISTAR EMPRESAS ---
-app.get('/api/admin/empresas', async (req, res) => {
+// --- ROTA CEO: LISTAR E RENOVAR ---
+app.get('/api/admin/profissionais', async (req, res) => {
   try {
     const result = await pool.query('SELECT id, nome, email, data_vencimento FROM profissionais WHERE is_ceo = false ORDER BY id DESC');
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: 'Erro ao listar empresas' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro ao listar' }); }
 });
 
-// --- ROTA EXCLUSIVA CEO: RENOVAÇÃO MANUAL (+30 DIAS) ---
 app.post('/api/admin/renovar-plano', async (req, res) => {
   const { profissional_id } = req.body;
   try {
@@ -56,7 +52,7 @@ app.post('/api/admin/renovar-plano', async (req, res) => {
     novaData.setDate(novaData.getDate() + 30); 
     await pool.query('UPDATE profissionais SET data_vencimento = $1 WHERE id = $2', [novaData, profissional_id]);
     res.json({ message: 'Sucesso', nova_data: novaData });
-  } catch (err) { res.status(500).json({ error: 'Erro ao renovar' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro ao renovar' }); }
 });
 
 // --- ROTA DE AGENDAMENTO (MULTI-SERVIÇOS) ---
@@ -68,9 +64,8 @@ app.post('/api/public/agendamentos', async (req, res) => {
       [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: 'Erro no agendamento' }); }
+  } catch (error) { res.status(500).json({ error: 'Erro agendamento' }); }
 });
 
-// (Mantenha aqui as rotas de LOGIN e CADASTRO que já funcionam)
-
-app.listen(process.env.PORT || 10000, () => console.log('🚀 API AURUM ONLINE'));
+// (Aqui seguem suas outras rotas de login/cadastro/dashboard...)
+app.listen(process.env.PORT || 10000, () => console.log('🚀 API ONLINE'));
