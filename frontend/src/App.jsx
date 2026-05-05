@@ -6,7 +6,9 @@ import PaginaCliente from './PaginaCliente';
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
 
+// ==========================================
 // 1. LANDING PAGE
+// ==========================================
 function LandingPage({ onGoToAuth }) {
   return (
     <div className="min-h-screen bg-[#080808] text-white font-['Inter'] overflow-x-hidden selection:bg-[#D4AF37] selection:text-black">
@@ -26,7 +28,9 @@ function LandingPage({ onGoToAuth }) {
   );
 }
 
-// 2. TELA AUTH
+// ==========================================
+// 2. TELA DE AUTENTICAÇÃO
+// ==========================================
 function TelaAuth({ onLogin, onVoltar }) {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState(''); const [email, setEmail] = useState(''); const [telefone, setTelefone] = useState(''); const [senha, setSenha] = useState('');
@@ -64,14 +68,18 @@ function TelaAuth({ onLogin, onVoltar }) {
   );
 }
 
-// 3. HOME PUBLICA
+// ==========================================
+// 3. HOME PÚBLICA (CONTROLE)
+// ==========================================
 function HomePublica({ onLogin }) {
   const [mostrarAuth, setMostrarAuth] = useState(false);
   if (mostrarAuth) return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
   return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
 }
 
-// 4. PAINEL PROFISSIONAL
+// ==========================================
+// 4. PAINEL PRINCIPAL (O SaaS)
+// ==========================================
 function PainelProfissional({ token, usuario, onLogout }) {
   const [telaAtiva, setTelaAtiva] = useState('home');
   const [modalAberto, setModalAberto] = useState(false);
@@ -85,7 +93,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [ganhoDia, setGanhoDia] = useState(0);
   const [qtdAtendimentos, setQtdAtendimentos] = useState(0);
   const [grafico, setGrafico] = useState([]);
-  
   const [servicos, setServicos] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [historicoCaixa, setHistoricoCaixa] = useState([]);
@@ -113,7 +120,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
     try {
       const resAssinatura = await fetch(`${API_URL}/assinatura`, { headers: headersAPI });
       const dAssin = await resAssinatura.json();
-      
       if (dAssin.status === 'vencido') { setBloqueado(true); setModalPagamento(true); } else { setBloqueado(false); setModalPagamento(false); }
       setDiasRestantes(dAssin.dias_restantes || 0);
 
@@ -145,12 +151,12 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const removerFuncionario = async (id) => { if(!window.confirm('Deseja excluir?')) return; await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
   const salvarMeusHorarios = async (horaClicada) => { let novosHorarios = [...meusHorarios]; if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada); novosHorarios.sort(); setMeusHorarios(novosHorarios); try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); } };
 
+  // --- CÁLCULOS DO FINANCEIRO ---
   const safeHistorico = Array.isArray(historicoCaixa) ? historicoCaixa : [];
   const safeDespesas = Array.isArray(despesas) ? despesas : [];
   const safeGrafico = Array.isArray(grafico) ? grafico : [];
   const safeGanhoDia = Number(ganhoDia) || 0;
   const safeQtd = Number(qtdAtendimentos) || 0;
-
   const totalEntradasHoje = safeHistorico.filter(v => new Date(v?.data_venda || Date.now()).toLocaleDateString() === new Date().toLocaleDateString()).reduce((acc, curr) => acc + (Number(curr?.valor) || 0), 0);
   const totalComissoesHoje = safeHistorico.filter(v => new Date(v?.data_venda || Date.now()).toLocaleDateString() === new Date().toLocaleDateString()).reduce((acc, curr) => acc + (Number(curr?.comissao_valor) || 0), 0);
   const totalDespesasHoje = safeDespesas.filter(d => new Date(d?.data_criacao || Date.now()).toLocaleDateString() === new Date().toLocaleDateString()).reduce((acc, curr) => acc + (Number(curr?.valor) || 0), 0);
@@ -159,6 +165,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] text-white relative">
+      
+      {/* MODAL PAGAMENTO/BLOQUEIO */}
       {modalPagamento && (
         <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 animate-fade-in">
           <div className="bg-[#1A1A1A] w-full max-w-xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl flex flex-col items-center relative">
@@ -171,15 +179,18 @@ function PainelProfissional({ token, usuario, onLogout }) {
         </div>
       )}
 
+      {/* MODAL VENDA MANUAL */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-end z-50 animate-fade-in"><div className="bg-[#1A1A1A] w-full rounded-t-[2.5rem] p-8 border-t border-[#2A2A2A] animate-slide-up"><div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-['Playfair_Display'] text-white">Venda Manual</h2><button onClick={() => setModalAberto(false)} className="text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-2 rounded-full"><X size={20}/></button></div><form onSubmit={confirmarVenda} className="space-y-6"><div><input type="text" placeholder="Nome do cliente (Opcional)" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-5 text-white rounded-2xl outline-none" value={vendaNome} onChange={(e) => setVendaNome(e.target.value)} /></div><div><label className="text-xs text-[#A8A8A8] uppercase mb-3 block">Serviço/Produto</label><div className="flex flex-wrap gap-3">{(Array.isArray(servicos)?servicos:[]).map((item) => (<button type="button" key={item.id} onClick={() => setVendaServico(item)} className={`px-5 py-3 rounded-xl border text-sm transition-all ${vendaServico?.id === item.id ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37]' : 'bg-[#0D0D0D] text-[#A8A8A8] border-[#2A2A2A]'}`}>{item.nome}</button>))}</div></div>{vendaServico && (<div className="bg-[#0D0D0D] p-5 rounded-2xl flex justify-between items-center mt-4"><span className="text-[#A8A8A8]">Valor a receber:</span><span className="text-[#D4AF37] text-2xl">R$ {Number(vendaServico.preco || 0).toFixed(2)}</span></div>)}<button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-2xl transition-all mt-4 ${vendaServico ? 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-bold uppercase text-sm">Receber</span></button></form></div></div>
       )}
 
+      {/* HEADER */}
       <header className="bg-[#1A1A1A] p-6 flex justify-between items-center sticky top-0 z-10 border-b border-[#2A2A2A]">
         <div className="flex items-center gap-4">{meuLogo && <img src={meuLogo} alt="Logo" className="w-12 h-12 rounded-full object-cover border border-[#D4AF37]" />}<div><h1 className="text-2xl font-bold font-['Playfair_Display'] text-[#D4AF37]">{usuario?.nome || 'Salão'}</h1><p className="text-[10px] tracking-widest text-[#A8A8A8] uppercase">{usuario?.is_ceo ? 'PAINEL MASTER CEO' : `Validade: ${diasRestantes} dias`}</p></div></div><button onClick={onLogout} className="w-10 h-10 border border-[#2A2A2A] rounded-full flex items-center justify-center text-[#A8A8A8] hover:text-white transition-colors"><LogOut size={16}/></button>
       </header>
 
       <main className="flex-1 p-6 pb-36 space-y-8 overflow-y-auto">
+        {/* TELA: HOME */}
         {telaAtiva === 'home' && (
           <div className="space-y-8 animate-fade-in">
             <div className="grid grid-cols-2 gap-4"><div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#D4AF37]/30 shadow-lg text-center"><span className="text-[#A8A8A8] text-[10px] uppercase block mb-2">Ganhos Hoje</span><span className="text-3xl font-['Playfair_Display'] text-[#E6C76B]">R$ {safeGanhoDia.toFixed(2)}</span></div><div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] shadow-lg text-center"><span className="text-[#A8A8A8] text-[10px] uppercase block mb-2">Atendimentos</span><span className="text-3xl font-['Playfair_Display']">{safeQtd}</span></div></div>
@@ -188,52 +199,86 @@ function PainelProfissional({ token, usuario, onLogout }) {
             <a href={`https://wa.me/?text=${encodeURIComponent(`Agende no ${usuario?.nome}: ${linkCliente}`)}`} target="_blank" rel="noreferrer" className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white py-5 rounded-2xl font-medium flex items-center justify-center gap-3 text-sm"><MessageCircle size={20} className="text-[#D4AF37]" /> Divulgar Link</a>
           </div>
         )}
+
+        {/* TELA: CAIXA */}
         {telaAtiva === 'caixa' && (
           <div className="space-y-6 animate-fade-in"><h2 className="text-2xl font-['Playfair_Display'] text-white">Fluxo de Caixa (Hoje)</h2><div className="bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] p-6 rounded-3xl border border-[#D4AF37]/50 flex flex-col gap-4 shadow-[0_0_20px_rgba(212,175,55,0.1)]"><div className="flex justify-between items-center text-sm"><span className="text-emerald-400 flex items-center gap-1"><TrendingUp size={16}/> Entradas (Vendas)</span> <span className="font-bold">R$ {totalEntradasHoje.toFixed(2)}</span></div><div className="flex justify-between items-center text-sm"><span className="text-red-400 flex items-center gap-1"><TrendingDown size={16}/> Saídas (Comissões)</span> <span className="font-bold">- R$ {(totalComissoesHoje + totalDespesasHoje).toFixed(2)}</span></div><div className="border-t border-[#2A2A2A] pt-4 flex justify-between items-center"><span className="text-[#A8A8A8] text-xs uppercase tracking-widest">Lucro Líquido</span> <span className="text-3xl font-['Playfair_Display'] text-[#D4AF37]">R$ {lucroLiquidoHoje.toFixed(2)}</span></div></div><div className="flex justify-between items-center mt-8 mb-4"><h3 className="text-xl font-['Playfair_Display']">Despesas Operacionais</h3><button onClick={() => setMostrarFormDespesa(!mostrarFormDespesa)} className="text-[#D4AF37] text-sm uppercase flex items-center gap-1"><Plus size={16}/> Adicionar</button></div>{mostrarFormDespesa && (<div className="bg-[#1A1A1A] p-6 rounded-3xl border border-red-900/30 mb-6 flex flex-col gap-4"><input type="text" placeholder="Ex: Conta de Luz..." value={novaDespesa.descricao} onChange={e=>setNovaDespesa({...novaDespesa, descricao: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl" /><input type="number" placeholder="Valor (R$)" value={novaDespesa.valor} onChange={e=>setNovaDespesa({...novaDespesa, valor: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl" /><button onClick={adicionarDespesa} className="w-full bg-red-900/40 text-red-200 border border-red-900/50 p-4 rounded-xl font-bold">Lançar Despesa</button></div>)}<div className="space-y-3">{safeDespesas.filter(d => new Date(d?.data_criacao || Date.now()).toLocaleDateString() === new Date().toLocaleDateString()).length === 0 ? <p className="text-[#6F6F6F] text-center text-sm">Nenhuma despesa hoje.</p> : safeDespesas.filter(d => new Date(d?.data_criacao || Date.now()).toLocaleDateString() === new Date().toLocaleDateString()).map(d => (<div key={d.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-4 rounded-2xl flex justify-between items-center"><div className="flex items-center gap-3"><Receipt size={18} className="text-red-400"/> <span>{d.descricao}</span></div><div className="flex items-center gap-3"><span className="text-red-400 font-bold">- R$ {Number(d.valor || 0).toFixed(2)}</span><button onClick={()=>removerDespesa(d.id)} className="text-[#6F6F6F]"><Trash2 size={16}/></button></div></div>))}</div><h3 className="text-xl font-['Playfair_Display'] mt-8 mb-4">Histórico de Entradas</h3><div className="space-y-3">{safeHistorico.length === 0 ? <p className="text-[#6F6F6F] text-center">Nenhuma movimentação hoje.</p> : safeHistorico.map((item) => (<div key={item.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-2xl flex flex-col gap-2"><div className="flex justify-between items-center"><div><p className="text-sm font-medium text-white">Venda Confirmada</p><p className="text-xs text-[#A8A8A8]">{new Date(item?.data_venda || Date.now()).toLocaleDateString()}</p></div><span className="text-[#D4AF37] text-lg font-bold">+ R$ {Number(item?.valor || 0).toFixed(2)}</span></div>{item?.funcionario_nome && <div className="text-xs text-[#A8A8A8] mt-2 border-t border-[#2A2A2A] pt-2">Profissional: {item.funcionario_nome} | Comissão: <span className="text-red-400">- R$ {Number(item?.comissao_valor || 0).toFixed(2)}</span></div>}</div>))}</div></div>
         )}
+
+        {/* TELA: AGENDA */}
         {telaAtiva === 'agenda' && (
           <div className="space-y-6 animate-fade-in"><h2 className="text-2xl font-['Playfair_Display'] text-white mb-6">Agenda de Hoje</h2>{(Array.isArray(agendamentos)?agendamentos:[]).length === 0 ? <p className="text-[#6F6F6F] text-center py-8">Agenda livre.</p> : (Array.isArray(agendamentos)?agendamentos:[]).map(ag => { const horariosArray = ag?.horario ? String(ag.horario).split(',') : []; return (<div key={ag.id} className="bg-[#1A1A1A] rounded-3xl border border-[#2A2A2A] overflow-hidden"><div className="bg-[#0D0D0D] px-6 py-4 border-b border-[#2A2A2A] flex justify-between items-center"><span className="text-[#D4AF37] text-xl font-bold">{horariosArray[0] || '--:--'}</span><span className="text-xs text-[#6F6F6F]">{ag?.data_reserva || ''}</span></div><div className="p-6"><div className="flex justify-between items-start mb-4"><div><p className="text-lg font-medium">{ag?.cliente_nome}</p><p className="text-[#A8A8A8] text-sm">{ag?.servico_nome}</p></div><span className="text-xl">R$ {Number(ag?.valor || 0).toFixed(2)}</span></div><button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-3 rounded-xl flex items-center justify-center gap-2"><CheckCircle2/> Finalizar</button></div></div>)})}</div>
         )}
+
+        {/* TELA: CLIENTES */}
         {telaAtiva === 'clientes' && (
           <div className="space-y-6 animate-fade-in"><h2 className="text-2xl font-['Playfair_Display'] text-white mb-6">CRM de Clientes</h2><div className="space-y-4">{(Array.isArray(listaClientes)?listaClientes:[]).length === 0 ? <p className="text-[#6F6F6F] text-center">Nenhum cliente salvo.</p> : (Array.isArray(listaClientes)?listaClientes:[]).map((cliente, idx) => (<div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl"><div className="flex justify-between items-start mb-4"><div><p className="font-medium text-lg">{cliente?.nome}</p><p className="text-xs text-[#A8A8A8]">{cliente?.whatsapp}</p></div><span className="bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-1 rounded text-[10px] font-bold">{cliente?.total_visitas || 0} Visitas</span></div></div>))}</div></div>
         )}
+
+        {/* TELA: EQUIPE */}
         {telaAtiva === 'equipe' && (
           <div className="space-y-6 animate-fade-in"><div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-['Playfair_Display'] text-white">Sua Equipe</h2><button onClick={() => setMostrarFormFuncionario(!mostrarFormFuncionario)} className="text-[#D4AF37] text-sm uppercase"><Plus size={16} className="inline"/> Add</button></div>{mostrarFormFuncionario && (<div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] mb-6"><input type="text" placeholder="Nome" value={novoFuncionario.nome} onChange={e=>setNovoFuncionario({...novoFuncionario, nome: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl mb-4" /><input type="number" placeholder="Comissão %" value={novoFuncionario.comissao} onChange={e=>setNovoFuncionario({...novoFuncionario, comissao: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl mb-4" /><button onClick={adicionarFuncionario} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-bold">Salvar</button></div>)}<div className="space-y-4">{(Array.isArray(funcionarios)?funcionarios:[]).map(func => (<div key={func.id} className="bg-[#1A1A1A] p-5 rounded-2xl flex justify-between items-center border border-[#2A2A2A]"><div><p className="font-medium text-lg">{func?.nome}</p><p className="text-sm text-[#A8A8A8]">Comissão: <span className="text-[#D4AF37]">{func?.comissao || 0}%</span></p></div><button onClick={() => removerFuncionario(func.id)} className="text-[#6F6F6F]"><Trash2 size={18}/></button></div>))}</div></div>
         )}
+
+        {/* TELA: CONFIGURAÇÕES */}
         {telaAtiva === 'config' && (
           <div className="space-y-8 animate-fade-in"><h2 className="text-2xl font-['Playfair_Display'] text-white">Configurações</h2>{!usuario?.is_ceo && ( <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#2A2A2A] flex justify-between items-center"><div><p className="text-white">Plano Premium</p><p className="text-sm text-[#A8A8A8]">Vence em {diasRestantes} dias</p></div><button onClick={() => setModalPagamento(true)} className="bg-[#D4AF37] text-[#0D0D0D] px-4 py-2 rounded-xl text-xs font-bold uppercase">Renovar</button></div> )}<div className="border-t border-[#2A2A2A] pt-6"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-['Playfair_Display']">Serviços</h3><button onClick={() => setMostrarFormServico(!mostrarFormServico)} className="text-[#D4AF37] text-sm uppercase"><Plus size={16} className="inline"/></button></div>{mostrarFormServico && ( <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] mb-6 space-y-4"><input type="text" placeholder="Nome" value={novoServico.nome} onChange={e=>setNovoServico({...novoServico, nome: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl" /><div className="flex gap-4"><input type="text" placeholder="Preço" value={novoServico.preco} onChange={e=>setNovoServico({...novoServico, preco: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl" /><input type="text" placeholder="Tempo" value={novoServico.tempo} onChange={e=>setNovoServico({...novoServico, tempo: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl" /></div><button onClick={adicionarServico} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-bold">Salvar Serviço</button></div> )}<div className="space-y-3">{(Array.isArray(servicos)?servicos:[]).map(serv => (<div key={serv.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-4 rounded-2xl flex justify-between items-center"><div><p>{serv?.nome}</p><p className="text-xs text-[#A8A8A8]">{serv?.tempo}</p></div><div className="flex items-center gap-4"><span className="text-[#D4AF37]">R$ {Number(serv?.preco || 0).toFixed(2)}</span><button onClick={() => removerServico(serv.id)} className="text-[#6F6F6F]"><Trash2 size={16}/></button></div></div>))}</div></div><div className="border-t border-[#2A2A2A] pt-6"><h3 className="text-xl font-['Playfair_Display'] mb-4">Grade de Horários</h3><div className="grid grid-cols-3 gap-3">{todosHorarios.map(hora => { const atende = (Array.isArray(meusHorarios)?meusHorarios:[]).includes(hora); return (<button key={hora} onClick={() => salvarMeusHorarios(hora)} className={`py-3 rounded-xl border text-sm ${atende ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37]' : 'bg-[#0D0D0D] text-[#4A4A4A] border-[#2A2A2A] line-through'}`}>{hora}</button>); })}</div></div></div>
         )}
+
+        {/* TELA: CEO MASTER */}
         {telaAtiva === 'ceo' && usuario?.is_ceo && (
           <div className="space-y-8 animate-fade-in"><h2 className="text-3xl font-['Playfair_Display'] text-[#D4AF37] text-center">Gestão de Licenças</h2><div className="grid grid-cols-2 gap-4"><div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A]"><span className="text-xs text-[#A8A8A8] block">Salões</span><span className="text-3xl font-bold">{dadosCeo?.totalEmpresas || 0}</span></div><div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#D4AF37]/30"><span className="text-xs text-[#A8A8A8] block">Giro Global</span><span className="text-2xl font-bold text-[#E6C76B]">R$ {Number(dadosCeo?.faturamentoGlobal || 0).toFixed(2)}</span></div></div><div className="space-y-4">{(Array.isArray(dadosCeo?.empresas)?dadosCeo.empresas:[]).map((emp) => { const venc = new Date(emp?.data_vencimento || Date.now()); const status = new Date() > venc && emp?.status_assinatura !== 'pago' ? 'Vencido' : 'Ativo'; return (<div key={emp.id} className="bg-[#1A1A1A] p-6 rounded-2xl border border-[#2A2A2A] space-y-4"><div className="flex justify-between items-start"><div><p className="text-xl font-bold">{emp?.nome}</p><p className="text-xs text-[#6F6F6F]">{emp?.telefone} | ID: {emp.id}</p></div><span className={`px-3 py-1 rounded text-[10px] font-bold uppercase border ${status === 'Ativo' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>{status}</span></div><div className="flex justify-between items-center text-xs text-[#A8A8A8] bg-[#0D0D0D] p-3 rounded-xl"><span>Vencimento: <strong className="text-white">{venc.toLocaleDateString('pt-BR')}</strong></span><span>Total: <strong className="text-[#D4AF37]">R$ {Number(emp?.faturamento_total || 0).toFixed(2)}</strong></span></div><div className="flex gap-2"><button onClick={() => liberarAcessoManual(emp.id)} className="flex-1 bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 uppercase tracking-widest"><Zap size={14}/> Liberar Acesso</button><button onClick={() => { if(window.confirm("Excluir?")) fetch(`${API_URL}/ceo/usuarios/${emp.id}`, { method: 'DELETE', headers: headersAPI }).then(carregarTudo).catch(e => console.error(e)); }} className="bg-[#2A2A2A] text-white p-3 rounded-xl"><Trash2 size={18}/></button></div></div>); })}</div></div>
         )}
       </main>
+
+      {/* NAVEGAÇÃO INFERIOR */}
       <nav className="bg-[#1A1A1A] border-t border-[#2A2A2A] fixed bottom-0 w-full flex justify-around p-3 pb-8 z-10">
-        <NavBtn icon={<Home/>} active={telaAtiva === 'home'} onClick={()=>setTelaAtiva('home')} title="Início"/>
-        <NavBtn icon={<Calendar/>} active={telaAtiva === 'agenda'} onClick={()=>setTelaAtiva('agenda')} title="Agenda"/>
-        <NavBtn icon={<DollarSign/>} active={telaAtiva === 'caixa'} onClick={()=>setTelaAtiva('caixa')} title="Caixa"/>
-        <NavBtn icon={<UsersRound/>} active={telaAtiva === 'clientes'} onClick={()=>setTelaAtiva('clientes')} title="Clientes"/>
-        <NavBtn icon={<Briefcase/>} active={telaAtiva === 'equipe'} onClick={()=>setTelaAtiva('equipe')} title="Equipe"/>
-        <NavBtn icon={<Settings/>} active={telaAtiva === 'config'} onClick={()=>setTelaAtiva('config')} title="Ajustes"/>
-        {usuario?.is_ceo && <NavBtn icon={<Shield/>} active={telaAtiva === 'ceo'} onClick={()=>setTelaAtiva('ceo')} title="Admin" isMaster={true}/>}
+        <NavBtn icon={<Home/>} active={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} title="Início"/>
+        <NavBtn icon={<Calendar/>} active={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} title="Agenda"/>
+        <NavBtn icon={<DollarSign/>} active={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} title="Caixa"/>
+        <NavBtn icon={<UsersRound/>} active={telaAtiva === 'clientes'} onClick={() => setTelaAtiva('clientes')} title="Clientes"/>
+        <NavBtn icon={<Briefcase/>} active={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} title="Equipe"/>
+        <NavBtn icon={<Settings/>} active={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} title="Ajustes"/>
+        {usuario?.is_ceo && <NavBtn icon={<Shield/>} active={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} title="Admin" isMaster={true}/>}
       </nav>
     </div>
   );
 }
 
-function NavBtn({ icon, active, onClick, title, isMaster }) { return (<button onClick={onClick} className={`flex flex-col items-center justify-center p-2 transition-colors ${active ? (isMaster ? 'text-red-500' : 'text-[#D4AF37]') : 'text-[#6F6F6F] hover:text-[#A8A8A8]'}`}>{icon}<span className="text-[9px] mt-1 uppercase font-bold tracking-widest">{title}</span></button>); }
+function NavBtn({ icon, active, onClick, title, isMaster }) { 
+  return (<button onClick={onClick} className={`flex flex-col items-center justify-center p-2 transition-colors ${active ? (isMaster ? 'text-red-500' : 'text-[#D4AF37]') : 'text-[#6F6F6F] hover:text-[#A8A8A8]'}`}>{icon}<span className="text-[9px] mt-1 uppercase font-bold tracking-widest">{title}</span></button>); 
+}
 
-// 5. SISTEMA PRINCIPAL
+// ==========================================
+// 5. SISTEMA PRINCIPAL (AUTH CHECK)
+// ==========================================
 function SistemaPrincipal() {
   const [t, setT] = useState(null); 
   const [u, setU] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  useEffect(() => { try { const ts = localStorage.getItem('aurum_token'); const us = localStorage.getItem('aurum_usuario'); if (ts && ts !== 'undefined') setT(ts); if (us && us !== 'undefined') setU(JSON.parse(us)); } catch (e) { localStorage.clear(); } finally { setCarregando(false); } }, []);
+
+  useEffect(() => { 
+    try { 
+      const ts = localStorage.getItem('aurum_token'); 
+      const us = localStorage.getItem('aurum_usuario'); 
+      if (ts && ts !== 'undefined') setT(ts); 
+      if (us && us !== 'undefined') setU(JSON.parse(us)); 
+    } catch (e) { localStorage.clear(); } finally { setCarregando(false); } 
+  }, []);
+
   if (carregando) return <div className="min-h-screen bg-[#080808] flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" /></div>;
   if (t && u) return <PainelProfissional token={t} usuario={u} onLogout={() => { localStorage.clear(); window.location.reload(); }} />;
-  return <HomePublica onLogin={(nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); }} />;
+  
+  return <HomePublica onLogin={(nt, nu) => { 
+    localStorage.setItem('aurum_token', nt); 
+    localStorage.setItem('aurum_usuario', JSON.stringify(nu)); 
+    setT(nt); setU(nu); 
+  }} />;
 }
 
-// 6. ROTEADOR MASTER
+// ==========================================
+// 6. ROTEADOR MASTER (DEFAULT EXPORT)
+// ==========================================
 export default function App() {
   const caminho = window.location.pathname;
   if (caminho.startsWith('/agendar/')) {
