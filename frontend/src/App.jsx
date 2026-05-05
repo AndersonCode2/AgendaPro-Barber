@@ -432,8 +432,20 @@ function NavBtn({ icon, active, onClick, title, isMaster }) {
   return (<button onClick={onClick} className={`flex flex-col items-center justify-center p-2 transition-colors ${active ? (isMaster ? 'text-red-500' : 'text-[#D4AF37]') : 'text-[#6F6F6F] hover:text-[#A8A8A8]'}`}>{icon}<span className="text-[9px] mt-1 uppercase font-bold tracking-widest">{title}</span></button>);
 }
 
+// ==========================================
+// 🚪 GERENCIADOR DE ACESSO
+// ==========================================
+function HomePublica({ onLogin }) {
+  const [mostrarAuth, setMostrarAuth] = useState(false);
+  if (mostrarAuth) return <TelaAuth onLogin={onLogin} onVoltar={() => setMostrarAuth(false)} />;
+  return <LandingPage onGoToAuth={() => setMostrarAuth(true)} />;
+}
+
 export default function App() {
-  const [t, setT] = useState(localStorage.getItem('aurum_token')); const [u, setU] = useState(JSON.parse(localStorage.getItem('aurum_usuario') || 'null'));
+  const [t, setT] = useState(localStorage.getItem('aurum_token')); 
+  const [u, setU] = useState(JSON.parse(localStorage.getItem('aurum_usuario') || 'null'));
+  
   if (t && u) return <PainelProfissional token={t} usuario={u} onLogout={() => { localStorage.clear(); window.location.reload(); }} />;
+  
   return <HomePublica onLogin={(nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); }} />;
 }
