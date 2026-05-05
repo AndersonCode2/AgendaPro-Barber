@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, UsersRound, Briefcase, ArrowLeft, Star, Lock, QrCode, ChevronRight, Zap, TrendingUp, TrendingDown, Receipt } from 'lucide-react';
-import PaginaCliente from './PaginaCliente';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
@@ -329,14 +328,13 @@ function HomePublica({ onLogin }) {
 }
 
 // ==========================================
-// 🚀 INICIALIZADOR SEGURO E ROTEADOR (O QUE FALTAVA)
+// 🚀 INICIALIZADOR SEGURO (SEM CONFLITO DE ROTAS)
 // ==========================================
-function SistemaPrincipal() {
+export default function App() {
   const [t, setT] = useState(null); 
   const [u, setU] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Proteção máxima contra Cache venenoso ("undefined")
   useEffect(() => {
     try {
       const tokenSalvo = localStorage.getItem('aurum_token');
@@ -354,15 +352,4 @@ function SistemaPrincipal() {
   if (carregando) return <div className="min-h-screen bg-[#080808] flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" /></div>;
   if (t && u) return <PainelProfissional token={t} usuario={u} onLogout={() => { localStorage.clear(); window.location.reload(); }} />;
   return <HomePublica onLogin={(nt, nu) => { localStorage.setItem('aurum_token', nt); localStorage.setItem('aurum_usuario', JSON.stringify(nu)); setT(nt); setU(nu); }} />;
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<SistemaPrincipal />} />
-        <Route path="/agendar/:id" element={<PaginaCliente />} />
-      </Routes>
-    </BrowserRouter>
-  );
 }
