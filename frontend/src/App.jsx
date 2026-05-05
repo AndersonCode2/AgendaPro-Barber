@@ -113,17 +113,29 @@ function PainelProfissional({ token, usuario, onLogout }) {
     try {
       const resAssinatura = await fetch(`${API_URL}/assinatura`, { headers: headersAPI });
       const dAssin = await resAssinatura.json();
-      if (dAssin.status === 'vencido') { setBloqueado(true); setModalPagamento(true); return; }
+      
+      // Lógica de Bloqueio/Desbloqueio em Tempo Real
+      if (dAssin.status === 'vencido') {
+         setBloqueado(true);
+         setModalPagamento(true);
+      } else {
+         setBloqueado(false);
+         setModalPagamento(false); // Fecha o modal sozinho se o CEO liberar!
+      }
+      
       setDiasRestantes(dAssin.dias_restantes || 0);
 
-      fetch(`${API_URL}/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ setGanhoDia(d.ganhoDia||0); setQtdAtendimentos(d.qtdAtendimentos||0); setGrafico(Array.isArray(d.grafico7Dias)?d.grafico7Dias:[]); }).catch(()=>null);
-      fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setHistoricoCaixa(Array.isArray(d)?d:[])).catch(()=>null);
-      fetch(`${API_URL}/despesas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setDespesas(Array.isArray(d)?d:[])).catch(()=>null);
-      fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setServicos(Array.isArray(d)?d:[])).catch(()=>null);
-      fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.json()).then(d=>setFuncionarios(Array.isArray(d)?d:[])).catch(()=>null);
-      fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.json()).then(d=>setListaClientes(Array.isArray(d)?d:[])).catch(()=>null);
-      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); if(d.logo_url) setMeuLogo(d.logo_url); }).catch(()=>null);
-      fetch(`${API_URL}/agendamentos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setAgendamentos(Array.isArray(d)?d:[])).catch(()=>null);
+      // Carregamento de dados (só roda se não estiver bloqueado para economizar recursos)
+      if (dAssin.status !== 'vencido') {
+        fetch(`${API_URL}/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ setGanhoDia(d.ganhoDia||0); setQtdAtendimentos(d.qtdAtendimentos||0); setGrafico(Array.isArray(d.grafico7Dias)?d.grafico7Dias:[]); }).catch(()=>null);
+        fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setHistoricoCaixa(Array.isArray(d)?d:[])).catch(()=>null);
+        fetch(`${API_URL}/despesas`, { headers: headersAPI }).then(r=>r.json()).then(d=>setDespesas(Array.isArray(d)?d:[])).catch(()=>null);
+        fetch(`${API_URL}/servicos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setServicos(Array.isArray(d)?d:[])).catch(()=>null);
+        fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.json()).then(d=>setFuncionarios(Array.isArray(d)?d:[])).catch(()=>null);
+        fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.json()).then(d=>setListaClientes(Array.isArray(d)?d:[])).catch(()=>null);
+        fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.json()).then(d=>{ if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); if(d.logo_url) setMeuLogo(d.logo_url); }).catch(()=>null);
+        fetch(`${API_URL}/agendamentos`, { headers: headersAPI }).then(r=>r.json()).then(d=>setAgendamentos(Array.isArray(d)?d:[])).catch(()=>null);
+      }
       
       if (usuario?.is_ceo) { fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.json()).then(setDadosCeo).catch(()=>null); }
     } catch (e) { console.error("Erro na sincronização", e); }
@@ -162,10 +174,37 @@ function PainelProfissional({ token, usuario, onLogout }) {
   return (
     <div className="min-h-screen flex flex-col bg-[#0D0D0D] text-white relative">
       
+      {/* MODAL DE PAGAMENTO ATUALIZADO COM BOTÃO SAIR */}
       {modalPagamento && (
-        <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 animate-fade-in"><div className="bg-[#1A1A1A] w-full max-w-xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl flex flex-col items-center"><Lock size={48} className={bloqueado ? "text-red-500 mb-4" : "text-[#D4AF37] mb-4"} /><h2 className="text-3xl font-['Playfair_Display'] mb-2">{bloqueado ? "Assinatura Vencida" : "Renovar Assinatura"}</h2>{!qrCodeBase64 ? (<button onClick={gerarPix} disabled={carregandoPix} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center mt-6 shadow-xl"><span className="text-[#0D0D0D] font-bold">AURUM PREMIUM - 30 DIAS</span><span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span></button>) : (<div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#D4AF37] flex flex-col items-center mt-6"><img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="Pix" className="w-48 h-48 mb-6" /><button onClick={() => { navigator.clipboard.writeText(qrCodeCopiaCola); alert('Copiado!'); }} className="w-full bg-[#1A1A1A] text-white py-4 rounded-xl flex justify-center gap-2"><QrCode size={18}/> Copiar Pix</button></div>)}{!bloqueado && <button onClick={() => setModalPagamento(false)} className="mt-4 text-[#A8A8A8] uppercase text-xs font-bold tracking-widest">Fechar</button>}</div></div>
+        <div className="fixed inset-0 bg-black/90 flex justify-center items-center z-50 p-4 animate-fade-in">
+          <div className="bg-[#1A1A1A] w-full max-w-xl rounded-[2.5rem] p-8 border border-[#2A2A2A] shadow-2xl flex flex-col items-center relative">
+            
+            {/* BOTÃO SAIR DA CONTA (UX ESTRATÉGICA) */}
+            <button onClick={onLogout} className="absolute top-6 right-6 text-[#A8A8A8] hover:text-white flex items-center gap-2 text-xs uppercase tracking-widest font-bold">
+               Sair <LogOut size={14}/>
+            </button>
+
+            <Lock size={48} className={bloqueado ? "text-red-500 mb-4" : "text-[#D4AF37] mb-4"} />
+            <h2 className="text-3xl font-['Playfair_Display'] mb-2">{bloqueado ? "Assinatura Vencida" : "Renovar Assinatura"}</h2>
+            
+            {!qrCodeBase64 ? (
+              <button onClick={gerarPix} disabled={carregandoPix} className="w-full bg-linear-to-r from-[#D4AF37] to-[#E6C76B] p-6 rounded-3xl flex justify-between items-center mt-6 shadow-xl">
+                <span className="text-[#0D0D0D] font-bold">AURUM PREMIUM - 30 DIAS</span>
+                <span className="text-2xl font-bold text-[#0D0D0D]">R$ 24,99</span>
+              </button>
+            ) : (
+              <div className="bg-[#0D0D0D] p-8 rounded-3xl border border-[#D4AF37] flex flex-col items-center mt-6">
+                <img src={`data:image/jpeg;base64,${qrCodeBase64}`} alt="Pix" className="w-48 h-48 mb-6" />
+                <button onClick={() => { navigator.clipboard.writeText(qrCodeCopiaCola); alert('Copiado!'); }} className="w-full bg-[#1A1A1A] text-white py-4 rounded-xl flex justify-center gap-2"><QrCode size={18}/> Copiar Pix</button>
+              </div>
+            )}
+            
+            {!bloqueado && <button onClick={() => setModalPagamento(false)} className="mt-4 text-[#A8A8A8] uppercase text-xs font-bold tracking-widest">Fechar</button>}
+          </div>
+        </div>
       )}
 
+      {/* MODAL VENDA EXTRA */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-end z-50 animate-fade-in"><div className="bg-[#1A1A1A] w-full rounded-t-[2.5rem] p-8 border-t border-[#2A2A2A] animate-slide-up"><div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-['Playfair_Display'] text-white">Venda Manual</h2><button onClick={() => setModalAberto(false)} className="text-[#A8A8A8] hover:text-white bg-[#2A2A2A] p-2 rounded-full"><X size={20}/></button></div><form onSubmit={confirmarVenda} className="space-y-6"><div><input type="text" placeholder="Nome do cliente (Opcional)" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-5 text-white rounded-2xl outline-none" value={vendaNome} onChange={(e) => setVendaNome(e.target.value)} /></div><div><label className="text-xs text-[#A8A8A8] uppercase mb-3 block">Serviço/Produto</label><div className="flex flex-wrap gap-3">{(Array.isArray(servicos)?servicos:[]).map((item) => (<button type="button" key={item.id} onClick={() => setVendaServico(item)} className={`px-5 py-3 rounded-xl border text-sm transition-all ${vendaServico?.id === item.id ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37]' : 'bg-[#0D0D0D] text-[#A8A8A8] border-[#2A2A2A]'}`}>{item.nome}</button>))}</div></div>{vendaServico && (<div className="bg-[#0D0D0D] p-5 rounded-2xl flex justify-between items-center mt-4"><span className="text-[#A8A8A8]">Valor a receber:</span><span className="text-[#D4AF37] text-2xl">R$ {Number(vendaServico.preco || 0).toFixed(2)}</span></div>)}<button type="submit" disabled={!vendaServico} className={`w-full p-5 flex justify-center gap-3 rounded-2xl transition-all mt-4 ${vendaServico ? 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D]' : 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed'}`}><CheckCircle2 size={22} /> <span className="font-bold uppercase text-sm">Receber</span></button></form></div></div>
       )}
@@ -328,7 +367,7 @@ function HomePublica({ onLogin }) {
 }
 
 // ==========================================
-// 🚀 INICIALIZADOR SEGURO (SEM CONFLITO DE ROTAS)
+// 🚀 INICIALIZADOR SEGURO
 // ==========================================
 export default function App() {
   const [t, setT] = useState(null); 
