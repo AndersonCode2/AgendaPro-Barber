@@ -189,7 +189,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [novoFuncionario, setNovoFuncionario] = useState({ nome: '', comissao: '' });
   const [listaClientes, setListaClientes] = useState([]);
 
-  const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '' });
+  const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '30 min' });
   const [vendaNome, setVendaNome] = useState('');
   const [vendaServico, setVendaServico] = useState(null);
 
@@ -199,6 +199,22 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [qtdAnteriorAgendamentos, setQtdAnteriorAgendamentos] = useState(0);
   
   const todosHorarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
+  const opcoesDuracaoServico = [
+    '15 min',
+    '20 min',
+    '30 min',
+    '40 min',
+    '45 min',
+    '1h',
+    '1h 30min',
+    '2h',
+    '2h 30min',
+    '3h',
+    '3h 30min',
+    '4h',
+    '5h',
+    '6h'
+  ];
   const [meusHorarios, setMeusHorarios] = useState([]);
   const [meuLogo, setMeuLogo] = useState(null);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
@@ -292,7 +308,26 @@ function PainelProfissional({ token, usuario, onLogout }) {
     setSalvandoConfig(false);
   }
 
-  const adicionarServico = async () => { if (!novoServico.nome || !novoServico.preco) return; await fetch(`${API_URL}/servicos`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoServico) }); setNovoServico({ nome: '', preco: '', tempo: '' }); setMostrarFormServico(false); carregarTudo(); };
+  const adicionarServico = async () => {
+    if (!novoServico.nome || !novoServico.preco || !novoServico.tempo) return;
+
+    const servicoFormatado = {
+      ...novoServico,
+      nome: novoServico.nome.trim(),
+      preco: novoServico.preco,
+      tempo: novoServico.tempo
+    };
+
+    await fetch(`${API_URL}/servicos`, {
+      method: 'POST',
+      headers: headersAPI,
+      body: JSON.stringify(servicoFormatado)
+    });
+
+    setNovoServico({ nome: '', preco: '', tempo: '30 min' });
+    setMostrarFormServico(false);
+    carregarTudo();
+  };
   const removerServico = async (id) => { await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
   const adicionarFuncionario = async () => { if (!novoFuncionario.nome) return; await fetch(`${API_URL}/funcionarios`, { method: 'POST', headers: headersAPI, body: JSON.stringify(novoFuncionario) }); setNovoFuncionario({ nome: '', comissao: '' }); setMostrarFormFuncionario(false); carregarTudo(); };
   const removerFuncionario = async (id) => { if(!window.confirm('Deseja excluir este profissional da equipe?')) return; await fetch(`${API_URL}/funcionarios/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
@@ -505,10 +540,55 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
             <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Menu de Experiências</h2><button onClick={() => setMostrarFormServico(!mostrarFormServico)} className="text-[#D4AF37] flex items-center gap-2 text-sm uppercase tracking-wider font-medium">{mostrarFormServico ? 'Cancelar' : <><Plus size={16}/> Adicionar</>}</button></div>
             {mostrarFormServico && (
-              <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] space-y-4 animate-slide-up mb-8 shadow-lg">
-                <div><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome da Experiência</label><input type="text" value={novoServico.nome} onChange={(e) => setNovoServico({...novoServico, nome: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div>
-                <div className="flex gap-4"><div className="flex-1"><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Valor (R$)</label><input type="text" value={novoServico.preco} onChange={(e) => setNovoServico({...novoServico, preco: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none"/></div><div className="flex-1"><label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Tempo</label><input type="text" value={novoServico.tempo} onChange={(e) => setNovoServico({...novoServico, tempo: e.target.value})} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"/></div></div>
-                <button onClick={adicionarServico} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium mt-2">Salvar Experiência</button>
+              <div className="bg-[#1A1A1A] p-6 rounded-3xl border border-[#2A2A2A] space-y-5 animate-slide-up mb-8 shadow-lg">
+                <div>
+                  <label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Nome da Experiência</label>
+                  <input
+                    type="text"
+                    value={novoServico.nome}
+                    onChange={(e) => setNovoServico({...novoServico, nome: e.target.value})}
+                    placeholder="Ex: Corte masculino, Luzes, Barba"
+                    className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Valor (R$)</label>
+                    <input
+                      type="text"
+                      value={novoServico.preco}
+                      onChange={(e) => setNovoServico({...novoServico, preco: e.target.value})}
+                      placeholder="Ex: 80,00"
+                      className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-[#D4AF37] rounded-xl focus:border-[#D4AF37] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-[#A8A8A8] uppercase tracking-wider mb-2 block">Duração do Serviço</label>
+                    <select
+                      value={novoServico.tempo}
+                      onChange={(e) => setNovoServico({...novoServico, tempo: e.target.value})}
+                      className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 text-white rounded-xl focus:border-[#D4AF37] outline-none"
+                    >
+                      {opcoesDuracaoServico.map((tempo) => (
+                        <option key={tempo} value={tempo} className="bg-[#0D0D0D] text-white">
+                          {tempo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-[#0D0D0D] border border-[#2A2A2A] rounded-2xl p-4">
+                  <p className="text-[#A8A8A8] text-xs leading-relaxed">
+                    A duração agora é padronizada pelo sistema. Isso evita erro de digitação como <strong className="text-white">3hr</strong> e melhora o bloqueio automático da agenda.
+                  </p>
+                </div>
+
+                <button onClick={adicionarServico} className="w-full bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-xl font-medium mt-2">
+                  Salvar Experiência
+                </button>
               </div>
             )}
             <div className="space-y-4">

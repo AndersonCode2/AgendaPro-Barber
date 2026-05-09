@@ -33,6 +33,8 @@ pool.connect().then(async () => {
       CREATE TABLE IF NOT EXISTS funcionarios (id SERIAL PRIMARY KEY, salao_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, comissao DECIMAL(5,2) DEFAULT 0);
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_nome VARCHAR(100);
+      ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS duracao_minutos INTEGER DEFAULT 60;
+      ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS horario_fim VARCHAR(5);
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE vendas ADD COLUMN IF NOT EXISTS comissao_valor DECIMAL(10,2) DEFAULT 0;
       CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, mensagem TEXT NOT NULL, status VARCHAR(20) DEFAULT 'aberto', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -52,6 +54,82 @@ const verificarToken = (req, res, next) => {
   } catch (error) { res.status(401).json({ error: 'Token inválido.' }); }
 };
 const verificarCEO = (req, res, next) => { if (!req.isCeo) return res.status(403).json({ error: 'Acesso negado.' }); next(); };
+
+// ==========================================
+// ⏱️ UTILITÁRIOS DE AGENDA INTELIGENTE
+// ==========================================
+const normalizarDataBR = (data) => {
+  if (!data) return data;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) return data;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return data;
+};
+
+const dataBRParaISO = (data) => {
+  if (!data) return data;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+    const [dia, mes, ano] = data.split('/');
+    return `${ano}-${mes}-${dia}`;
+  }
+  return data;
+};
+
+const horaParaMinutos = (hora) => {
+  if (!hora || typeof hora !== 'string') return null;
+  const [h, m] = hora.trim().split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+};
+
+const minutosParaHora = (minutos) => {
+  const h = Math.floor(minutos / 60).toString().padStart(2, '0');
+  const m = (minutos % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const calcularPassoAgenda = (horarios) => {
+  const minutos = horarios.map(horaParaMinutos).filter(v => v !== null).sort((a, b) => a - b);
+  let menorPasso = 60;
+  for (let i = 1; i < minutos.length; i++) {
+    const diff = minutos[i] - minutos[i - 1];
+    if (diff > 0 && diff < menorPasso) menorPasso = diff;
+  }
+  return menorPasso || 60;
+};
+
+const existeConflitoHorario = (inicioA, fimA, inicioB, fimB) => {
+  return inicioA < fimB && fimA > inicioB;
+};
+
+const montarIntervalosOcupados = (agendamentos) => {
+  const intervalos = [];
+  agendamentos.forEach(item => {
+    if (!item.horario) return;
+    String(item.horario).split(',').forEach(horaBruta => {
+      const inicio = horaParaMinutos(horaBruta.trim());
+      if (inicio === null) return;
+      const duracao = parseInt(item.duracao_minutos, 10) || 60;
+      const fimBanco = item.horario_fim ? horaParaMinutos(item.horario_fim) : null;
+      const fim = fimBanco && fimBanco > inicio ? fimBanco : inicio + duracao;
+      intervalos.push({ inicio, fim });
+    });
+  });
+  return intervalos;
+};
+
+const horarioEstaDisponivel = (horarioInicio, duracaoMinutos, intervalosOcupados) => {
+  const inicio = horaParaMinutos(horarioInicio);
+  if (inicio === null) return false;
+  const fim = inicio + duracaoMinutos;
+  return !intervalosOcupados.some(intervalo =>
+    existeConflitoHorario(inicio, fim, intervalo.inicio, intervalo.fim)
+  );
+};
+
 
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
@@ -199,19 +277,233 @@ app.get('/api/public/funcionarios/:id_profissional', async (req, res) => { try {
 app.get('/api/public/historico/:id_profissional/:whatsapp', async (req, res) => { try { const result = await pool.query(`SELECT servico_nome FROM agendamentos WHERE profissional_id = $1 AND cliente_whatsapp = $2 ORDER BY data_criacao DESC LIMIT 1`, [req.params.id_profissional, req.params.whatsapp]); res.json({ ultimoServico: result.rows.length > 0 ? result.rows[0].servico_nome : null }); } catch(e){ res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
   try {
-    let query = "SELECT horario FROM agendamentos WHERE profissional_id = $1 AND data_reserva = $2 AND status != 'cancelado'"; let params = [req.params.id_profissional, req.query.data];
-    if (req.query.funcionario_id) { query += " AND (funcionario_id = $3 OR funcionario_id IS NULL)"; params.push(req.query.funcionario_id); }
-    const result = await pool.query(query, params); let ocupados = []; result.rows.forEach(r => { if(r.horario) ocupados = ocupados.concat(r.horario.split(',')); }); res.json(ocupados);
-  } catch (error) { res.status(500).json({ error: 'Erro ocupados' }); }
+    const idProfissional = req.params.id_profissional;
+    const dataBR = normalizarDataBR(req.query.data);
+    const duracaoMinutos = Math.max(parseInt(req.query.duracao, 10) || 60, 5);
+    const funcionarioId = req.query.funcionario_id ? parseInt(req.query.funcionario_id, 10) : null;
+
+    const profissional = await pool.query(
+      'SELECT horarios_trabalho FROM profissionais WHERE id = $1',
+      [idProfissional]
+    );
+
+    const horariosTrabalho = (profissional.rows[0]?.horarios_trabalho || '')
+      .split(',')
+      .map(h => h.trim())
+      .filter(Boolean)
+      .sort();
+
+    if (horariosTrabalho.length === 0) {
+      return res.json([]);
+    }
+
+    // Busca todos os agendamentos do dia.
+    // Depois filtramos por funcionário em JavaScript para evitar erro de lógica no SQL.
+    const agendamentosResult = await pool.query(
+      `
+      SELECT
+        id,
+        horario,
+        horario_fim,
+        duracao_minutos,
+        funcionario_id,
+        funcionario_nome,
+        status
+      FROM agendamentos
+      WHERE profissional_id = $1
+      AND data_reserva = $2
+      AND status != 'cancelado'
+      `,
+      [idProfissional, dataBR]
+    );
+
+    let agendamentosDoDia = agendamentosResult.rows;
+
+    /*
+      REGRA PROFISSIONAL:
+      - Se cliente escolhe "sem preferência", bloqueia qualquer horário já usado por qualquer funcionário.
+      - Se cliente escolhe um funcionário específico, bloqueia:
+        1. agendamentos daquele funcionário
+        2. agendamentos sem funcionário definido
+    */
+    if (funcionarioId) {
+      agendamentosDoDia = agendamentosDoDia.filter(item => {
+        return (
+          !item.funcionario_id ||
+          parseInt(item.funcionario_id, 10) === funcionarioId
+        );
+      });
+    }
+
+    const intervalosOcupados = montarIntervalosOcupados(agendamentosDoDia);
+
+    const passoAgenda = calcularPassoAgenda(horariosTrabalho);
+    const ultimoInicio = horaParaMinutos(horariosTrabalho[horariosTrabalho.length - 1]);
+    const limiteFimExpediente = ultimoInicio + passoAgenda;
+
+    const hojeISO = new Date().toISOString().split('T')[0];
+    const agora = new Date();
+    const agoraMinutos = agora.getHours() * 60 + agora.getMinutes();
+    const dataSelecionadaISO = dataBRParaISO(req.query.data);
+
+    const ocupados = horariosTrabalho.filter(horario => {
+      const inicio = horaParaMinutos(horario);
+      if (inicio === null) return true;
+
+      const fim = inicio + duracaoMinutos;
+
+      // Bloqueia horários passados no dia atual
+      if (dataSelecionadaISO === hojeISO && inicio <= agoraMinutos) {
+        return true;
+      }
+
+      // Bloqueia se o serviço não couber no expediente
+      if (fim > limiteFimExpediente) {
+        return true;
+      }
+
+      // Bloqueia conflito real de intervalo
+      const conflito = intervalosOcupados.some(intervalo => {
+        return inicio < intervalo.fim && fim > intervalo.inicio;
+      });
+
+      return conflito;
+    });
+
+    res.json(ocupados);
+
+  } catch (error) {
+    console.error('Erro ao buscar horários ocupados:', error);
+    res.status(500).json({ error: 'Erro ocupados' });
+  }
 });
+
 app.post('/api/public/agendamentos', async (req, res) => {
-  const { id_profissional, nome, whatsapp, nascimento, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome } = req.body;
+  const {
+    id_profissional,
+    nome,
+    whatsapp,
+    nascimento,
+    servico_nome,
+    data_reserva,
+    horario,
+    valor,
+    funcionario_id,
+    funcionario_nome,
+    duracao_minutos
+  } = req.body;
+
   try {
-    const clienteExiste = await pool.query('SELECT id FROM clientes WHERE profissional_id = $1 AND whatsapp = $2', [id_profissional, whatsapp]);
-    if (clienteExiste.rows.length === 0) { await pool.query('INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)', [id_profissional, nome, whatsapp, nascimento]); }
-    const result = await pool.query('INSERT INTO agendamentos (profissional_id, cliente_nome, cliente_whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id, funcionario_nome) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *', [id_profissional, nome, whatsapp, servico_nome, data_reserva, horario, valor, funcionario_id || null, funcionario_nome || null]);
+    const dataBR = normalizarDataBR(data_reserva);
+    const duracaoMinutos = Math.max(parseInt(duracao_minutos, 10) || 60, 5);
+    const inicioMinutos = horaParaMinutos(horario);
+
+    if (inicioMinutos === null) {
+      return res.status(400).json({ error: 'Horário inválido.' });
+    }
+
+    const horarioFim = minutosParaHora(inicioMinutos + duracaoMinutos);
+    const funcionarioId = funcionario_id ? parseInt(funcionario_id, 10) : null;
+
+    // Busca todos os agendamentos do dia.
+    const agendamentosResult = await pool.query(
+      `
+      SELECT
+        id,
+        horario,
+        horario_fim,
+        duracao_minutos,
+        funcionario_id,
+        funcionario_nome,
+        status
+      FROM agendamentos
+      WHERE profissional_id = $1
+      AND data_reserva = $2
+      AND status != 'cancelado'
+      `,
+      [id_profissional, dataBR]
+    );
+
+    let agendamentosDoDia = agendamentosResult.rows;
+
+    /*
+      REGRA DE CONFLITO:
+      - Se o novo agendamento está "sem preferência", ele conflita com qualquer agendamento do dia.
+      - Se tem funcionário específico, conflita com:
+        1. agendamento do mesmo funcionário
+        2. agendamento sem funcionário
+    */
+    if (funcionarioId) {
+      agendamentosDoDia = agendamentosDoDia.filter(item => {
+        return (
+          !item.funcionario_id ||
+          parseInt(item.funcionario_id, 10) === funcionarioId
+        );
+      });
+    }
+
+    const intervalosOcupados = montarIntervalosOcupados(agendamentosDoDia);
+
+    const conflito = intervalosOcupados.some(intervalo => {
+      return inicioMinutos < intervalo.fim && (inicioMinutos + duracaoMinutos) > intervalo.inicio;
+    });
+
+    if (conflito) {
+      return res.status(409).json({
+        error: 'Este horário já está ocupado. Escolha outro horário.'
+      });
+    }
+
+    const clienteExiste = await pool.query(
+      'SELECT id FROM clientes WHERE profissional_id = $1 AND whatsapp = $2',
+      [id_profissional, whatsapp]
+    );
+
+    if (clienteExiste.rows.length === 0) {
+      await pool.query(
+        'INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)',
+        [id_profissional, nome, whatsapp, nascimento]
+      );
+    }
+
+    const result = await pool.query(
+      `INSERT INTO agendamentos
+      (
+        profissional_id,
+        cliente_nome,
+        cliente_whatsapp,
+        servico_nome,
+        data_reserva,
+        horario,
+        horario_fim,
+        duracao_minutos,
+        valor,
+        funcionario_id,
+        funcionario_nome
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *`,
+      [
+        id_profissional,
+        nome,
+        whatsapp,
+        servico_nome,
+        dataBR,
+        horario,
+        horarioFim,
+        duracaoMinutos,
+        valor,
+        funcionarioId || null,
+        funcionario_nome || null
+      ]
+    );
+
     res.status(201).json(result.rows[0]);
-  } catch (error) { console.error("ERRO GRAVE AO AGENDAR:", error); res.status(500).json({ error: 'Erro agendar' }); }
+
+  } catch (error) {
+    console.error('ERRO GRAVE AO AGENDAR:', error);
+    res.status(500).json({ error: 'Erro agendar' });
+  }
 });
 
 const PORT = process.env.PORT || 3333; app.listen(PORT, () => console.log(`🚀 Servidor AURUM ERP na porta ${PORT}`));
