@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ArrowLeft, Scissors, Loader2, Star } from 'lucide-react';
+import { Clock, User, CheckCircle2, ChevronRight, ArrowLeft, Scissors, Loader2, Star } from 'lucide-react';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 
@@ -20,11 +20,14 @@ export default function PaginaCliente() {
   const [passo, setPasso] = useState(1);
   const [servicosSelecionados, setServicosSelecionados] = useState([]);
   const [funcionarioSelecionado, setFuncionarioSelecionado] = useState(null);
+  const [escolhaSemPreferencia, setEscolhaSemPreferencia] = useState(false);
+  const [profissionaisDisponiveisHorario, setProfissionaisDisponiveisHorario] = useState([]);
   const [dataSelecionada, setDataSelecionada] = useState('');
   const [horariosDisponiveis, setHorariosDisponiveis] = useState([]);
   const [horariosOcupados, setHorariosOcupados] = useState([]);
   const [horarioSelecionado, setHorarioSelecionado] = useState('');
   const [carregandoHorarios, setCarregandoHorarios] = useState(false);
+  const [carregandoProfissionais, setCarregandoProfissionais] = useState(false);
 
   // Dados do Cliente
   const [cliente, setCliente] = useState({ nome: '', whatsapp: '', nascimento: '' });
@@ -77,6 +80,18 @@ export default function PaginaCliente() {
   const nomesServicos = servicosSelecionados.map(servico => servico.nome).join(', ');
   const horarioFimSelecionado = horarioSelecionado ? somarMinutosNaHora(horarioSelecionado, tempoTotal || 60) : '';
 
+  const profissionalAutomatico = escolhaSemPreferencia && profissionaisDisponiveisHorario.length > 0
+    ? profissionaisDisponiveisHorario[0]
+    : null;
+
+  const profissionalFinal = funcionarioSelecionado || profissionalAutomatico;
+
+  const nomeProfissionalExibicao = funcionarioSelecionado
+    ? funcionarioSelecionado.nome
+    : profissionalAutomatico
+      ? `Qualquer disponível (${profissionalAutomatico.nome})`
+      : 'Sem preferência';
+
   useEffect(() => {
     carregarDadosSalao();
   }, [id_profissional]);
@@ -113,6 +128,13 @@ export default function PaginaCliente() {
     }
   };
 
+  const resetarEscolhaDeHorarioEProfissional = () => {
+    setHorarioSelecionado('');
+    setFuncionarioSelecionado(null);
+    setEscolhaSemPreferencia(false);
+    setProfissionaisDisponiveisHorario([]);
+  };
+
   const toggleServico = (servico) => {
     setServicosSelecionados((selecionadosAtuais) => {
       const jaSelecionado = selecionadosAtuais.some(item => item.id === servico.id);
@@ -123,24 +145,57 @@ export default function PaginaCliente() {
 
       return [...selecionadosAtuais, servico];
     });
+
+    resetarEscolhaDeHorarioEProfissional();
   };
 
-  const buscarHorarios = async (data, funcId) => {
+  // Busca os horários livres/ocupados considerando a equipe inteira.
+  // Agora o horário só aparece ocupado no modo "sem preferência" se TODOS os profissionais estiverem ocupados.
+  const buscarHorarios = async (data) => {
     if (!data) return;
+
     setCarregandoHorarios(true);
-    setHorarioSelecionado('');
+    resetarEscolhaDeHorarioEProfissional();
 
     try {
-      let url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${tempoTotal || 60}`;
-      if (funcId) url += `&funcionario_id=${funcId}`;
+      const todosHorarios = Array.isArray(salao.horarios_trabalho)
+        ? salao.horarios_trabalho
+        : [];
 
+      const duracao = tempoTotal || 60;
+
+      // Se o salão tem profissionais, consulta cada agenda individualmente.
+      if (funcionarios.length > 0) {
+        const resultadosPorFuncionario = await Promise.all(
+          funcionarios.map(async (func) => {
+            const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}&funcionario_id=${func.id}`;
+            const res = await fetch(url);
+            const ocupados = await res.json();
+
+            return {
+              funcionario_id: func.id,
+              horarios_ocupados: Array.isArray(ocupados) ? ocupados : []
+            };
+          })
+        );
+
+        const horariosBloqueados = todosHorarios.filter((hora) => {
+          return resultadosPorFuncionario.every((resultado) => {
+            return resultado.horarios_ocupados.includes(hora);
+          });
+        });
+
+        setHorariosOcupados(horariosBloqueados);
+        setHorariosDisponiveis(todosHorarios);
+        return;
+      }
+
+      // Se o salão não tem profissionais cadastrados, usa a agenda geral.
+      const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}`;
       const res = await fetch(url);
       const ocupados = await res.json();
 
-      const horariosOcupadosApi = Array.isArray(ocupados) ? ocupados : [];
-      const todosHorarios = Array.isArray(salao.horarios_trabalho) ? salao.horarios_trabalho : [];
-
-      setHorariosOcupados(horariosOcupadosApi);
+      setHorariosOcupados(Array.isArray(ocupados) ? ocupados : []);
       setHorariosDisponiveis(todosHorarios);
     } catch (err) {
       console.error(err);
@@ -151,11 +206,56 @@ export default function PaginaCliente() {
     }
   };
 
-  useEffect(() => {
-    if (passo === 3 && dataSelecionada) {
-      buscarHorarios(dataSelecionada, funcionarioSelecionado?.id);
+  // Depois que o cliente escolhe horário, mostra quais profissionais estão disponíveis naquele horário.
+  const buscarProfissionaisDisponiveis = async (data, hora) => {
+    if (!data || !hora) return;
+
+    setCarregandoProfissionais(true);
+    setFuncionarioSelecionado(null);
+    setEscolhaSemPreferencia(false);
+
+    try {
+      const duracao = tempoTotal || 60;
+
+      if (funcionarios.length === 0) {
+        setProfissionaisDisponiveisHorario([]);
+        return;
+      }
+
+      const resultados = await Promise.all(
+        funcionarios.map(async (func) => {
+          const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}&funcionario_id=${func.id}`;
+          const res = await fetch(url);
+          const ocupados = await res.json();
+          const listaOcupados = Array.isArray(ocupados) ? ocupados : [];
+
+          return {
+            ...func,
+            disponivel: !listaOcupados.includes(hora)
+          };
+        })
+      );
+
+      setProfissionaisDisponiveisHorario(resultados.filter(item => item.disponivel));
+    } catch (err) {
+      console.error(err);
+      setProfissionaisDisponiveisHorario([]);
+    } finally {
+      setCarregandoProfissionais(false);
     }
-  }, [passo, dataSelecionada, funcionarioSelecionado, tempoTotal]);
+  };
+
+  useEffect(() => {
+    if (passo === 2 && dataSelecionada) {
+      buscarHorarios(dataSelecionada);
+    }
+  }, [passo, dataSelecionada, tempoTotal, funcionarios.length]);
+
+  useEffect(() => {
+    if (passo === 3 && dataSelecionada && horarioSelecionado) {
+      buscarProfissionaisDisponiveis(dataSelecionada, horarioSelecionado);
+    }
+  }, [passo, dataSelecionada, horarioSelecionado, tempoTotal, funcionarios.length]);
 
   useEffect(() => {
     const formatarEBuscar = async () => {
@@ -196,6 +296,16 @@ export default function PaginaCliente() {
       return;
     }
 
+    if (funcionarios.length > 0 && !funcionarioSelecionado && !escolhaSemPreferencia) {
+      alert('Escolha um profissional ou selecione qualquer disponível.');
+      return;
+    }
+
+    if (funcionarios.length > 0 && escolhaSemPreferencia && !profissionalAutomatico) {
+      alert('Nenhum profissional disponível para este horário. Escolha outro horário.');
+      return;
+    }
+
     if (!cliente.nome || cliente.whatsapp.replace(/\D/g, '').length < 10) {
       alert('Por favor, preencha seu nome e um WhatsApp válido.');
       return;
@@ -212,8 +322,8 @@ export default function PaginaCliente() {
       data_reserva: formatarDataBR(dataSelecionada),
       horario: horarioSelecionado,
       valor: valorTotal,
-      funcionario_id: funcionarioSelecionado ? funcionarioSelecionado.id : null,
-      funcionario_nome: funcionarioSelecionado ? funcionarioSelecionado.nome : null,
+      funcionario_id: profissionalFinal ? profissionalFinal.id : null,
+      funcionario_nome: profissionalFinal ? profissionalFinal.nome : null,
       duracao_minutos: tempoTotal || 60
     };
 
@@ -224,12 +334,15 @@ export default function PaginaCliente() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Erro ao agendar');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Erro ao agendar');
+      }
 
       setSucesso(true);
     } catch (err) {
       console.error(err);
-      alert('Ocorreu um erro ao tentar agendar. Tente novamente.');
+      alert(err.message || 'Ocorreu um erro ao tentar agendar. Tente novamente.');
     } finally {
       setEnviando(false);
     }
@@ -267,6 +380,7 @@ export default function PaginaCliente() {
         <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-4 mb-8 w-full max-w-sm text-left">
           <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest mb-2">Serviços agendados</p>
           <p className="text-white text-sm leading-relaxed">{nomesServicos}</p>
+          <p className="text-[#A8A8A8] text-xs mt-3">Profissional: <strong className="text-white">{profissionalFinal?.nome || 'Sem preferência'}</strong></p>
           <p className="text-[#D4AF37] font-['Playfair_Display'] text-xl mt-3">R$ {valorTotal.toFixed(2).replace('.', ',')}</p>
         </div>
         <button onClick={() => window.location.reload()} className="text-[#D4AF37] border border-[#D4AF37] px-8 py-3 rounded-full text-xs font-bold tracking-widest uppercase hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors">
@@ -358,44 +472,6 @@ export default function PaginaCliente() {
 
           {passo === 2 && (
             <div className="animate-slide-up">
-              <h2 className="text-xl font-['Playfair_Display'] text-white mb-6">Escolha o Profissional</h2>
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setFuncionarioSelecionado(null)}
-                  className={`w-full p-5 rounded-2xl border text-left transition-all flex items-center gap-4 ${!funcionarioSelecionado ? 'bg-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'bg-[#0D0D0D] border-[#2A2A2A] hover:border-[#D4AF37]/50'}`}
-                >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-[#1A1A1A] border ${!funcionarioSelecionado ? 'border-[#D4AF37]' : 'border-[#2A2A2A]'}`}>
-                    <Star size={20} className={!funcionarioSelecionado ? 'text-[#D4AF37]' : 'text-[#6F6F6F]'} />
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${!funcionarioSelecionado ? 'text-[#D4AF37]' : 'text-white'}`}>Sem preferência</p>
-                    <p className="text-[#6F6F6F] text-xs">O primeiro disponível atenderá você</p>
-                  </div>
-                </button>
-
-                {funcionarios.map(func => (
-                  <button
-                    key={func.id}
-                    type="button"
-                    onClick={() => setFuncionarioSelecionado(func)}
-                    className={`w-full p-5 rounded-2xl border text-left transition-all flex items-center gap-4 ${funcionarioSelecionado?.id === func.id ? 'bg-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'bg-[#0D0D0D] border-[#2A2A2A] hover:border-[#D4AF37]/50'}`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-[#1A1A1A] border ${funcionarioSelecionado?.id === func.id ? 'border-[#D4AF37]' : 'border-[#2A2A2A]'}`}>
-                      <Scissors size={20} className={funcionarioSelecionado?.id === func.id ? 'text-[#D4AF37]' : 'text-[#6F6F6F]'} />
-                    </div>
-                    <p className={`font-medium text-lg flex-1 ${funcionarioSelecionado?.id === func.id ? 'text-[#D4AF37]' : 'text-white'}`}>{func.nome}</p>
-                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${funcionarioSelecionado?.id === func.id ? 'border-[#D4AF37] bg-[#D4AF37]' : 'border-[#2A2A2A]'}`}>
-                      {funcionarioSelecionado?.id === func.id && <CheckCircle2 size={12} className="text-[#0D0D0D]" />}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {passo === 3 && (
-            <div className="animate-slide-up">
               <h2 className="text-xl font-['Playfair_Display'] text-white mb-6">Data e Horário</h2>
 
               <div className="bg-[#0D0D0D] border border-[#2A2A2A] rounded-2xl p-4 mb-4">
@@ -454,9 +530,14 @@ export default function PaginaCliente() {
                           type="button"
                           disabled={ocupado}
                           onClick={() => {
-                            if (!ocupado) setHorarioSelecionado(hora);
+                            if (!ocupado) {
+                              setHorarioSelecionado(hora);
+                              setFuncionarioSelecionado(null);
+                              setEscolhaSemPreferencia(false);
+                              setProfissionaisDisponiveisHorario([]);
+                            }
                           }}
-                          title={ocupado ? 'Horário ocupado ou sem tempo suficiente para este serviço' : `Selecionar ${hora}`}
+                          title={ocupado ? 'Todos os profissionais estão ocupados neste horário' : `Selecionar ${hora}`}
                           className={`py-3.5 rounded-xl border text-sm font-medium transition-all relative overflow-hidden ${selecionado ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37] scale-105 shadow-lg' : ocupado ? 'bg-red-950/40 text-red-300 border-red-900/60 cursor-not-allowed opacity-80' : 'bg-[#0D0D0D] text-[#A8A8A8] border-[#2A2A2A] hover:border-[#D4AF37]/50 hover:text-white'}`}
                         >
                           <span className="block">{hora}</span>
@@ -467,6 +548,94 @@ export default function PaginaCliente() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {passo === 3 && (
+            <div className="animate-slide-up">
+              <h2 className="text-xl font-['Playfair_Display'] text-white mb-2">Profissional disponível</h2>
+              <p className="text-[#6F6F6F] text-xs mb-6">Escolha quem vai atender no horário {horarioSelecionado}.</p>
+
+              <div className="bg-[#0D0D0D] border border-[#D4AF37]/20 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-[#A8A8A8] uppercase tracking-widest">Horário escolhido</p>
+                  <p className="text-[#D4AF37] font-bold">{formatarDataBR(dataSelecionada)} • {horarioSelecionado} → {horarioFimSelecionado}</p>
+                </div>
+                <p className="text-white text-sm">{formatarDuracao(tempoTotal || 60)}</p>
+              </div>
+
+              {carregandoProfissionais ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-[#D4AF37]" size={24} /></div>
+              ) : funcionarios.length === 0 ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFuncionarioSelecionado(null);
+                      setEscolhaSemPreferencia(true);
+                    }}
+                    className={`w-full p-5 rounded-2xl border text-left transition-all flex items-center gap-4 ${escolhaSemPreferencia ? 'bg-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'bg-[#0D0D0D] border-[#2A2A2A] hover:border-[#D4AF37]/50'}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-[#1A1A1A] border ${escolhaSemPreferencia ? 'border-[#D4AF37]' : 'border-[#2A2A2A]'}`}>
+                      <Star size={20} className={escolhaSemPreferencia ? 'text-[#D4AF37]' : 'text-[#6F6F6F]'} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${escolhaSemPreferencia ? 'text-[#D4AF37]' : 'text-white'}`}>Atendimento pelo salão</p>
+                      <p className="text-[#6F6F6F] text-xs">Nenhum profissional específico cadastrado</p>
+                    </div>
+                  </button>
+                </div>
+              ) : profissionaisDisponiveisHorario.length === 0 ? (
+                <p className="text-red-300 text-sm text-center py-6 border border-red-900/50 bg-red-950/20 rounded-xl">Nenhum profissional disponível neste horário. Volte e escolha outro horário.</p>
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFuncionarioSelecionado(null);
+                      setEscolhaSemPreferencia(true);
+                    }}
+                    className={`w-full p-5 rounded-2xl border text-left transition-all flex items-center gap-4 ${escolhaSemPreferencia && !funcionarioSelecionado ? 'bg-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : 'bg-[#0D0D0D] border-[#2A2A2A] hover:border-[#D4AF37]/50'}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-[#1A1A1A] border ${escolhaSemPreferencia && !funcionarioSelecionado ? 'border-[#D4AF37]' : 'border-[#2A2A2A]'}`}>
+                      <Star size={20} className={escolhaSemPreferencia && !funcionarioSelecionado ? 'text-[#D4AF37]' : 'text-[#6F6F6F]'} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${escolhaSemPreferencia && !funcionarioSelecionado ? 'text-[#D4AF37]' : 'text-white'}`}>Qualquer disponível</p>
+                      <p className="text-[#6F6F6F] text-xs">Sistema atribui automaticamente: {profissionaisDisponiveisHorario[0]?.nome}</p>
+                    </div>
+                    {escolhaSemPreferencia && !funcionarioSelecionado && <CheckCircle2 size={18} className="text-[#D4AF37]" />}
+                  </button>
+
+                  {funcionarios.map(func => {
+                    const disponivel = profissionaisDisponiveisHorario.some(item => Number(item.id) === Number(func.id));
+                    const selecionado = funcionarioSelecionado?.id === func.id;
+
+                    return (
+                      <button
+                        key={func.id}
+                        type="button"
+                        disabled={!disponivel}
+                        onClick={() => {
+                          if (!disponivel) return;
+                          setFuncionarioSelecionado(func);
+                          setEscolhaSemPreferencia(false);
+                        }}
+                        className={`w-full p-5 rounded-2xl border text-left transition-all flex items-center gap-4 ${selecionado ? 'bg-[#0D0D0D] border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.1)]' : !disponivel ? 'bg-red-950/20 border-red-900/50 opacity-70 cursor-not-allowed' : 'bg-[#0D0D0D] border-[#2A2A2A] hover:border-[#D4AF37]/50'}`}
+                      >
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-[#1A1A1A] border ${selecionado ? 'border-[#D4AF37]' : !disponivel ? 'border-red-900/60' : 'border-[#2A2A2A]'}`}>
+                          <Scissors size={20} className={selecionado ? 'text-[#D4AF37]' : !disponivel ? 'text-red-300' : 'text-[#6F6F6F]'} />
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-medium text-lg ${selecionado ? 'text-[#D4AF37]' : !disponivel ? 'text-red-300' : 'text-white'}`}>{func.nome}</p>
+                          <p className={`text-xs ${disponivel ? 'text-emerald-400' : 'text-red-300'}`}>{disponivel ? 'Disponível neste horário' : 'Ocupado neste horário'}</p>
+                        </div>
+                        {selecionado && <CheckCircle2 size={18} className="text-[#D4AF37]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -488,7 +657,7 @@ export default function PaginaCliente() {
                 </div>
                 <div className="flex justify-between items-center pb-2 border-b border-[#2A2A2A]">
                   <span className="text-[#A8A8A8] text-xs">Profissional</span>
-                  <span className="text-white font-medium">{funcionarioSelecionado ? funcionarioSelecionado.nome : 'Sem preferência'}</span>
+                  <span className="text-white font-medium text-right">{nomeProfissionalExibicao}</span>
                 </div>
                 <div className="flex justify-between items-center pb-2 border-b border-[#2A2A2A]">
                   <span className="text-[#A8A8A8] text-xs">Data e Hora</span>
@@ -534,8 +703,13 @@ export default function PaginaCliente() {
             <button
               type="button"
               onClick={() => setPasso(passo + 1)}
-              disabled={(passo === 1 && servicosSelecionados.length === 0) || (passo === 3 && !horarioSelecionado)}
-              className={`w-full py-4 rounded-xl font-bold tracking-widest uppercase text-xs flex justify-center items-center gap-2 transition-all ${((passo === 1 && servicosSelecionados.length === 0) || (passo === 3 && !horarioSelecionado)) ? 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed' : 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:scale-[1.02]'}`}
+              disabled={
+                (passo === 1 && servicosSelecionados.length === 0) ||
+                (passo === 2 && !horarioSelecionado) ||
+                (passo === 3 && funcionarios.length > 0 && !funcionarioSelecionado && !escolhaSemPreferencia) ||
+                (passo === 3 && funcionarios.length > 0 && escolhaSemPreferencia && profissionaisDisponiveisHorario.length === 0)
+              }
+              className={`w-full py-4 rounded-xl font-bold tracking-widest uppercase text-xs flex justify-center items-center gap-2 transition-all ${((passo === 1 && servicosSelecionados.length === 0) || (passo === 2 && !horarioSelecionado) || (passo === 3 && funcionarios.length > 0 && !funcionarioSelecionado && !escolhaSemPreferencia) || (passo === 3 && funcionarios.length > 0 && escolhaSemPreferencia && profissionaisDisponiveisHorario.length === 0)) ? 'bg-[#1A1A1A] text-[#6F6F6F] border border-[#2A2A2A] cursor-not-allowed' : 'bg-linear-to-r from-[#D4AF37] to-[#E6C76B] text-[#0D0D0D] shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:scale-[1.02]'}`}
             >
               Continuar <ChevronRight size={16} strokeWidth={3} />
             </button>

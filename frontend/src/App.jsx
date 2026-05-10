@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
+import AgendaTimeline from './components/AgendaTimeline';
+import ClienteCard from './components/ClienteCard';
+import ClienteHistoricoModal from './components/ClienteHistoricoModal';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
@@ -189,6 +192,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [novoFuncionario, setNovoFuncionario] = useState({ nome: '', comissao: '' });
   const [listaClientes, setListaClientes] = useState([]);
 
+  const [clienteHistoricoAberto, setClienteHistoricoAberto] = useState(false);
+  const [clienteSelecionadoHistorico, setClienteSelecionadoHistorico] = useState(null);
+
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '30 min' });
   const [vendaNome, setVendaNome] = useState('');
   const [vendaServico, setVendaServico] = useState(null);
@@ -343,6 +349,11 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const excluirEmpresa = async (id, nomeEmpresa) => { if (!window.confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir o salão "${nomeEmpresa}"?`)) return; const res = await fetch(`${API_URL}/ceo/usuarios/${id}`, { method: 'DELETE', headers: headersAPI }); if (res.ok) { alert("Removido."); carregarTudo(); } else { alert("Erro ao excluir."); } };
   const enviarSuporteParaCEO = async (e) => { e.preventDefault(); try { await fetch(`${API_URL}/tickets`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ mensagem: textoSuporte }) }); } catch(err) { console.error(err); } window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`💡 *Novo Ticket de Suporte*\n\n*Assinante:* ${usuario.nome}\n*ID da Conta:* ${usuario.id}\n\n*Mensagem:*\n"${textoSuporte}"`)}`, '_blank'); setModalSuporte(false); setTextoSuporte(''); };
+  const abrirHistoricoCliente = (cliente) => {
+    setClienteSelecionadoHistorico(cliente);
+    setClienteHistoricoAberto(true);
+  };
+
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
   const renderModalPagamento = () => (
@@ -428,18 +439,38 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
         {telaAtiva === 'agenda' && (
           <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-normal font-['Playfair_Display'] text-white mb-6">Sua Agenda</h2>
-            <div className="space-y-5">
-              {agendamentos.length === 0 ? <p className="text-center text-[#6F6F6F] py-12 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Sua agenda está livre.</p> : agendamentos.map((ag) => (
-                  <div key={ag.id} className="bg-[#1A1A1A] p-0 rounded-3xl border border-[#2A2A2A] flex flex-col overflow-hidden group hover:border-[#D4AF37]/50 transition-colors shadow-lg">
-                    <div className="bg-[#0D0D0D] px-6 py-4 border-b border-[#2A2A2A] flex justify-between items-center"><div className="flex items-center gap-3"><span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span><span className="text-[#D4AF37] font-['Playfair_Display'] text-xl">{ag.horario ? ag.horario.split(',')[0] : '--:--'}</span><span className="text-[#6F6F6F] text-xs ml-2 border-l border-[#2A2A2A] pl-3">{ag.data_reserva}</span></div><span className="bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded text-[9px] uppercase tracking-widest font-bold border border-emerald-500/20">Confirmado</span></div>
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4"><div><p className="text-white font-medium text-lg">{ag.cliente_nome}</p><p className="text-[#A8A8A8] text-sm mt-1">{ag.servico_nome}</p></div><span className="text-white font-['Playfair_Display'] text-xl">R$ {parseFloat(ag.valor).toFixed(2).replace('.', ',')}</span></div>
-                      {ag.funcionario_nome && (<div className="mb-6 inline-block bg-[#2A2A2A] text-[#D4AF37] px-3 py-1 rounded-full text-xs font-medium">Profissional: {ag.funcionario_nome}</div>)}
-                      <button onClick={() => concluirAtendimento(ag)} className="w-full bg-[#0D0D0D] border border-[#D4AF37] text-[#D4AF37] p-4 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#D4AF37] hover:text-[#0D0D0D] transition-colors"><CheckCircle2 size={18} /> Finalizar & Agradecer</button>
-                    </div>
-                  </div>
-              ))}
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-2">
+              <div>
+                <p className="text-[#D4AF37] text-[10px] uppercase tracking-[0.25em] font-bold mb-2">Agenda Profissional</p>
+                <h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">Timeline Premium</h2>
+                <p className="text-[#8A8A8A] text-sm mt-2 font-light">
+                  Visualize seus horários por profissional, com duração real, valor e status do atendimento.
+                </p>
+              </div>
+
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl px-5 py-4 min-w-[180px]">
+                <p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-1">Link do cliente</p>
+                <a
+                  href={linkCliente}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#D4AF37] text-xs font-bold hover:text-white transition-colors break-all"
+                >
+                  Abrir agenda online
+                </a>
+              </div>
+            </div>
+
+            <AgendaTimeline
+              agendamentos={agendamentos}
+              funcionarios={funcionarios}
+              onConcluir={concluirAtendimento}
+            />
+
+            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-5">
+              <p className="text-[#A8A8A8] text-xs leading-relaxed">
+                A timeline usa a duração real salva no agendamento. Serviços longos aparecem ocupando várias faixas de horário, ajudando a evitar conflitos e deixando a gestão mais visual.
+              </p>
             </div>
           </div>
         )}
@@ -463,20 +494,67 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
         {telaAtiva === 'clientes' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Meus Clientes</h2><span className="text-[#D4AF37] text-sm uppercase tracking-wider font-medium">{listaClientes.length} Total</span></div>
-            <div className="space-y-4">
-              {listaClientes.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Sua lista de clientes está vazia.</p> : listaClientes.map((cliente, idx) => {
-                  const dataUltimaVisita = cliente.ultima_visita ? new Date(cliente.ultima_visita).toLocaleDateString('pt-BR') : 'Nunca';
-                  const numeroFormatado = cliente.whatsapp?.replace(/\D/g, '');
-                  const saudacao = encodeURIComponent(`Olá ${cliente.nome.split(' ')[0]}! Tudo bem? Faz um tempinho que não te vemos no ${usuario.nome}. Que tal agendar um horário hoje? ✨`);
-                  return (
-                    <div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col gap-4 shadow-md hover:border-[#D4AF37]/30 transition-colors">
-                      <div className="flex justify-between items-start"><div><p className="text-white font-medium text-lg">{cliente.nome}</p><p className="text-[#A8A8A8] text-xs mt-1">{cliente.whatsapp}</p></div><div className="text-right"><span className="bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{cliente.total_visitas} Visitas</span></div></div>
-                      <div className="bg-[#0D0D0D] p-3 rounded-xl border border-[#2A2A2A] flex justify-between items-center"><span className="text-xs text-[#6F6F6F]">Última visita: <span className="text-white">{dataUltimaVisita}</span></span><a href={`https://wa.me/55${numeroFormatado}?text=${saudacao}`} target="_blank" rel="noreferrer" className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Enviar Promoção</a></div>
-                    </div>
-                  );
-              })}
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-[#D4AF37] text-[10px] uppercase tracking-[0.25em] font-bold mb-2">
+                  CRM Premium
+                </p>
+
+                <h2 className="text-3xl font-normal font-['Playfair_Display'] text-white">
+                  Clientes
+                </h2>
+
+                <p className="text-[#8A8A8A] text-sm mt-2">
+                  Gerencie relacionamento, retenção e histórico dos seus clientes.
+                </p>
+              </div>
+
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl px-6 py-5 min-w-[180px]">
+                <p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-2">
+                  Total de Clientes
+                </p>
+
+                <p className="text-white text-3xl font-bold">
+                  {listaClientes.length}
+                </p>
+              </div>
             </div>
+
+            {listaClientes.length === 0 ? (
+              <div className="bg-[#1A1A1A] border border-dashed border-[#2A2A2A] rounded-4xl p-14 text-center">
+                <UsersRound size={42} className="text-[#D4AF37] mx-auto mb-4 opacity-70" />
+
+                <h3 className="text-white text-2xl font-['Playfair_Display'] mb-3">
+                  Nenhum cliente encontrado
+                </h3>
+
+                <p className="text-[#8A8A8A] text-sm">
+                  Seus clientes aparecerão automaticamente após os agendamentos.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-5">
+
+                {listaClientes.map((cliente, idx) => (
+
+                  <ClienteCard
+                    key={cliente.id || idx}
+                    cliente={cliente}
+                    usuario={usuario}
+                    onHistorico={(clienteSelecionado) => {
+                      abrirHistoricoCliente(clienteSelecionado);
+                    }}
+                    onReagendar={(clienteSelecionado) => {
+                      console.log('Reagendar:', clienteSelecionado);
+                    }}
+                  />
+
+                ))}
+
+              </div>
+            )}
+
           </div>
         )}
 
@@ -650,14 +728,75 @@ function PainelProfissional({ token, usuario, onLogout }) {
         )}
       </main>
 
+      
+      <ClienteHistoricoModal
+        aberto={clienteHistoricoAberto}
+        onClose={() => setClienteHistoricoAberto(false)}
+        cliente={clienteSelecionadoHistorico}
+        historico={
+          Array.isArray(agendamentos)
+            ? agendamentos.filter(
+                (ag) =>
+                  ag.cliente_id === clienteSelecionadoHistorico?.id
+              )
+            : []
+        }
+      />
+
       <nav className="bg-[#1A1A1A] border-t border-[#2A2A2A] fixed bottom-0 w-full flex justify-around p-3 pb-safe z-10">
-        <NavButton icone={<Home />} texto="Início" ativo={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} />
-        <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
-        <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
-        <NavButton icone={<UsersRound />} texto="Clientes" ativo={telaAtiva === 'clientes'} onClick={() => setTelaAtiva('clientes')} />
-        <NavButton icone={<Briefcase />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
-        <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
-        {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
+
+        <NavButton
+          icone={<Home />}
+          texto="Início"
+          ativo={telaAtiva === 'home'}
+          onClick={() => setTelaAtiva('home')}
+        />
+
+        <NavButton
+          icone={<Calendar />}
+          texto="Agenda"
+          ativo={telaAtiva === 'agenda'}
+          onClick={() => setTelaAtiva('agenda')}
+        />
+
+        <NavButton
+          icone={<DollarSign />}
+          texto="Caixa"
+          ativo={telaAtiva === 'caixa'}
+          onClick={() => setTelaAtiva('caixa')}
+        />
+
+        <NavButton
+          icone={<UsersRound />}
+          texto="Clientes"
+          ativo={telaAtiva === 'clientes'}
+          onClick={() => setTelaAtiva('clientes')}
+        />
+
+        <NavButton
+          icone={<Briefcase />}
+          texto="Equipe"
+          ativo={telaAtiva === 'equipe'}
+          onClick={() => setTelaAtiva('equipe')}
+        />
+
+        <NavButton
+          icone={<Settings />}
+          texto="Ajustes"
+          ativo={telaAtiva === 'config'}
+          onClick={() => setTelaAtiva('config')}
+        />
+
+        {usuario.is_ceo && (
+          <NavButton
+            icone={<Shield />}
+            texto="Admin"
+            ativo={telaAtiva === 'ceo'}
+            onClick={() => setTelaAtiva('ceo')}
+            isDestaque={true}
+          />
+        )}
+
       </nav>
 
       {modalAberto && (
