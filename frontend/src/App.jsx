@@ -199,6 +199,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [clienteSelecionadoHistorico, setClienteSelecionadoHistorico] = useState(null);
   const [clienteReagendarAberto, setClienteReagendarAberto] = useState(false);
   const [clienteSelecionadoReagendar, setClienteSelecionadoReagendar] = useState(null);
+  const [novoAgendamentoAberto, setNovoAgendamentoAberto] = useState(false);
 
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '30 min' });
   const [vendaNome, setVendaNome] = useState('');
@@ -411,6 +412,53 @@ function PainelProfissional({ token, usuario, onLogout }) {
     }
   };
 
+  const salvarNovoAgendamento = async ({
+    cliente,
+    servico,
+    funcionario,
+    data,
+    horario
+  }) => {
+    if (!cliente || !servico || !funcionario || !data || !horario) {
+      alert('Preencha todas as informações do agendamento.');
+      return;
+    }
+
+    const payload = {
+      id_profissional: usuario.id,
+      nome: cliente.nome,
+      whatsapp: cliente.whatsapp,
+      nascimento: cliente.nascimento || '',
+      servico_nome: servico.nome,
+      data_reserva: data.split('-').reverse().join('/'),
+      horario,
+      valor: Number(servico.preco || 0),
+      funcionario_id: funcionario.id,
+      funcionario_nome: funcionario.nome,
+      duracao_minutos:
+        Number(servico.duracao_minutos) ||
+        Number(servico.duracao) ||
+        60
+    };
+
+    const res = await fetch(`${API_URL}/public/agendamentos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      alert('Erro ao criar agendamento.');
+      return;
+    }
+
+    await carregarTudo();
+
+    alert('Agendamento criado com sucesso!');
+  };
+
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
 
   const renderModalPagamento = () => (
@@ -518,31 +566,27 @@ function PainelProfissional({ token, usuario, onLogout }) {
               </div>
             </div>
 
-           {/* MOBILE */}
-<div className="block lg:hidden">
+            {/* MOBILE */}
+            <div className="block lg:hidden">
+              <AgendaMobile
+                agendamentos={agendamentos}
+                onNovoAgendamento={() => {
+                  setNovoAgendamentoAberto(true);
+                }}
+                onFinalizar={(agendamento) => {
+                  concluirAtendimento(agendamento);
+                }}
+              />
+            </div>
 
-  <AgendaMobile
-    agendamentos={agendamentos}
-    onNovoAgendamento={() => {
-      console.log('Novo agendamento');
-    }}
-    onFinalizar={(agendamento) => {
-      concluirAtendimento(agendamento);
-    }}
-  />
-
-</div>
-
-{/* DESKTOP */}
-<div className="hidden lg:block">
-
-  <AgendaTimeline
-    agendamentos={agendamentos}
-    funcionarios={funcionarios}
-    onConcluir={concluirAtendimento}
-  />
-
-</div>
+            {/* DESKTOP */}
+            <div className="hidden lg:block">
+              <AgendaTimeline
+                agendamentos={agendamentos}
+                funcionarios={funcionarios}
+                onConcluir={concluirAtendimento}
+              />
+            </div>
 
             <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-5">
               <p className="text-[#A8A8A8] text-xs leading-relaxed">
@@ -818,6 +862,16 @@ function PainelProfissional({ token, usuario, onLogout }) {
               )
             : []
         }
+      />
+
+      <NovoAgendamentoModal
+        aberto={novoAgendamentoAberto}
+        onClose={() => setNovoAgendamentoAberto(false)}
+        clientes={listaClientes}
+        funcionarios={funcionarios}
+        servicos={servicos}
+        horarios={meusHorarios}
+        onSalvar={salvarNovoAgendamento}
       />
 
       <ReagendarClienteModal
