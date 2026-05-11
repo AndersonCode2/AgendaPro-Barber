@@ -66,8 +66,10 @@ export default function ClienteCard({
     `Olá ${primeiroNome}! Tudo bem?`
   );
 
+  const numeroWhatsApp = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`;
+
   const linkWhatsApp = telefoneLimpo
-    ? `https://wa.me/55${telefoneLimpo}?text=${mensagemWhatsApp}`
+    ? `https://wa.me/${numeroWhatsApp}?text=${mensagemWhatsApp}`
     : '#';
 
   return (
@@ -137,7 +139,7 @@ export default function ClienteCard({
             Serviço favorito
           </span>
 
-          <span className="text-white text-xs font-medium text-right truncate max-w-[150px]">
+          <span className="text-white text-xs font-medium text-right truncate max-w-37.5">
             {servicoFavorito}
           </span>
         </div>

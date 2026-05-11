@@ -48,7 +48,7 @@ export default function PaginaCliente() {
     }
 
     const numero = parseInt(texto.replace(/\D/g, ''), 10);
-    return Number.isNaN(numero) ? 0 : numero;
+    return Number.isNaN(numero) ? 60 : numero;
   };
 
   const formatarDuracao = (minutos) => {
@@ -168,7 +168,7 @@ export default function PaginaCliente() {
       if (funcionarios.length > 0) {
         const resultadosPorFuncionario = await Promise.all(
           funcionarios.map(async (func) => {
-            const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}&funcionario_id=${func.id}`;
+            const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${encodeURIComponent(data)}&duracao=${duracao}&funcionario_id=${func.id}`;
             const res = await fetch(url);
             const ocupados = await res.json();
 
@@ -191,7 +191,7 @@ export default function PaginaCliente() {
       }
 
       // Se o salão não tem profissionais cadastrados, usa a agenda geral.
-      const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}`;
+      const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${encodeURIComponent(data)}&duracao=${duracao}`;
       const res = await fetch(url);
       const ocupados = await res.json();
 
@@ -224,7 +224,7 @@ export default function PaginaCliente() {
 
       const resultados = await Promise.all(
         funcionarios.map(async (func) => {
-          const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${data}&duracao=${duracao}&funcionario_id=${func.id}`;
+          const url = `${API_URL}/public/horarios-ocupados/${id_profissional}?data=${encodeURIComponent(data)}&duracao=${duracao}&funcionario_id=${func.id}`;
           const res = await fetch(url);
           const ocupados = await res.json();
           const listaOcupados = Array.isArray(ocupados) ? ocupados : [];
@@ -262,7 +262,7 @@ export default function PaginaCliente() {
       const whatsLimpo = cliente.whatsapp.replace(/\D/g, '');
       if (whatsLimpo.length >= 10 && passo === 4) {
         try {
-          const res = await fetch(`${API_URL}/public/historico/${id_profissional}/${cliente.whatsapp}`);
+          const res = await fetch(`${API_URL}/public/historico/${id_profissional}/${encodeURIComponent(cliente.whatsapp)}`);
           const data = await res.json();
           if (data.ultimoServico) {
             console.log('Último serviço:', data.ultimoServico);

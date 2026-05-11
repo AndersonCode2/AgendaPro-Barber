@@ -26,11 +26,13 @@ pool.connect().then(async () => {
       UPDATE profissionais SET data_vencimento = CURRENT_TIMESTAMP + INTERVAL '30 days' WHERE data_vencimento IS NULL AND is_ceo = FALSE;
 
       CREATE TABLE IF NOT EXISTS servicos (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, preco DECIMAL(10,2) NOT NULL, tempo VARCHAR(50));
-      CREATE TABLE IF NOT EXISTS clientes (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, whatsapp VARCHAR(20), nascimento VARCHAR(20), data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE IF NOT EXISTS clientes (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, whatsapp VARCHAR(20), nascimento VARCHAR(20), observacoes TEXT, data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+      ALTER TABLE clientes ADD COLUMN IF NOT EXISTS observacoes TEXT;
       CREATE TABLE IF NOT EXISTS vendas (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, valor DECIMAL(10,2) NOT NULL, data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS agendamentos (id SERIAL PRIMARY KEY, profissional_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, cliente_nome VARCHAR(100), cliente_whatsapp VARCHAR(20), servico_nome VARCHAR(255), data_reserva VARCHAR(20) DEFAULT 'Hoje', horario VARCHAR(255), valor DECIMAL(10,2), status VARCHAR(20) DEFAULT 'pendente', data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
       ALTER TABLE agendamentos ALTER COLUMN horario TYPE VARCHAR(255);
       CREATE TABLE IF NOT EXISTS funcionarios (id SERIAL PRIMARY KEY, salao_id INTEGER REFERENCES profissionais(id) ON DELETE CASCADE, nome VARCHAR(100) NOT NULL, comissao DECIMAL(5,2) DEFAULT 0);
+      ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL;
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE SET NULL;
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS funcionario_nome VARCHAR(100);
       ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS duracao_minutos INTEGER DEFAULT 60;
@@ -99,6 +101,41 @@ const calcularPassoAgenda = (horarios) => {
     if (diff > 0 && diff < menorPasso) menorPasso = diff;
   }
   return menorPasso || 60;
+};
+
+const gerarGradeAgenda = (horariosBase = [], intervalo = 15) => {
+  const minutos = horariosBase
+    .map(horaParaMinutos)
+    .filter(v => v !== null)
+    .sort((a, b) => a - b);
+
+  if (minutos.length === 0) return [];
+
+  const passoBase = calcularPassoAgenda(horariosBase) || 60;
+  const grade = new Set();
+
+  minutos.forEach(inicioBloco => {
+    const fimBloco = inicioBloco + passoBase;
+    for (let minuto = inicioBloco; minuto < fimBloco; minuto += intervalo) {
+      grade.add(minutosParaHora(minuto));
+    }
+  });
+
+  return Array.from(grade).sort();
+};
+
+const horarioCabeNaGrade = (horarioInicio, duracaoMinutos, gradeHorarios) => {
+  const inicio = horaParaMinutos(horarioInicio);
+  if (inicio === null) return false;
+
+  const gradeSet = new Set(gradeHorarios);
+  const fim = inicio + duracaoMinutos;
+
+  for (let minuto = inicio; minuto < fim; minuto += 15) {
+    if (!gradeSet.has(minutosParaHora(minuto))) return false;
+  }
+
+  return true;
 };
 
 const existeConflitoHorario = (inicioA, fimA, inicioB, fimB) => {
@@ -242,7 +279,58 @@ app.post('/api/webhook', async (req, res) => {
 
 
 // ROTAS PADRÕES
-app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => { try { const empresas = await pool.query(`SELECT p.id, p.nome, p.email, p.telefone, COALESCE(SUM(v.valor), 0) as faturamento_total FROM profissionais p LEFT JOIN vendas v ON p.id = v.profissional_id WHERE p.is_ceo = FALSE GROUP BY p.id ORDER BY p.data_cadastro DESC`); res.json({ totalEmpresas: empresas.rows.length, faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), empresas: empresas.rows }); } catch (error) { res.status(500).json({ error: 'Erro CEO' }); } });
+app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => {
+  try {
+    const empresas = await pool.query(`
+      SELECT
+        p.id,
+        p.nome,
+        p.email,
+        p.telefone,
+        p.status_assinatura,
+        p.data_vencimento,
+        COALESCE(SUM(v.valor), 0) as faturamento_total
+      FROM profissionais p
+      LEFT JOIN vendas v ON p.id = v.profissional_id
+      WHERE p.is_ceo = FALSE
+      GROUP BY p.id
+      ORDER BY p.data_cadastro DESC
+    `);
+
+    res.json({
+      totalEmpresas: empresas.rows.length,
+      faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0),
+      empresas: empresas.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro CEO' });
+  }
+});
+
+app.post('/api/ceo/usuarios/:id/renovar', verificarToken, verificarCEO, async (req, res) => {
+  try {
+    const dias = Math.max(parseInt(req.body?.dias, 10) || 30, 1);
+
+    const result = await pool.query(
+      `UPDATE profissionais
+       SET status_assinatura = 'pago',
+           data_vencimento = GREATEST(COALESCE(data_vencimento, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP) + ($1 || ' days')::interval
+       WHERE id = $2 AND is_ceo = FALSE
+       RETURNING id, nome, email, telefone, status_assinatura, data_vencimento`,
+      [dias, req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Assinante não encontrado.' });
+    }
+
+    res.json({ message: `Assinatura renovada por ${dias} dias.`, usuario: result.rows[0] });
+  } catch (error) {
+    console.error('Erro ao renovar assinante:', error);
+    res.status(500).json({ error: 'Erro ao renovar assinante.' });
+  }
+});
+
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => { try { await pool.query('DELETE FROM profissionais WHERE id = $1 AND is_ceo = FALSE', [req.params.id]); res.json({ message: 'Excluído' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/api/tickets', verificarToken, async (req, res) => { try { await pool.query('INSERT INTO tickets (profissional_id, mensagem) VALUES ($1, $2)', [req.profissionalId, req.body.mensagem]); res.status(201).json({ message: 'Ticket aberto' }); } catch(e) { res.status(500).json({ error: 'Erro ao abrir ticket' }); } });
 app.get('/api/ceo/tickets', verificarToken, verificarCEO, async (req, res) => { try { const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC"); res.json(result.rows); } catch(e) { res.status(500).json({ error: 'Erro buscar tickets' }); } });
@@ -270,8 +358,164 @@ app.post('/api/agendamentos/:id/concluir', verificarToken, async (req, res) => {
     res.json({ message: 'Concluído com sucesso!' });
   } catch (error) { res.status(500).json({ error: 'Erro concluir' }); }
 });
-app.get('/api/clientes', verificarToken, async (req, res) => { try { const result = await pool.query(`SELECT c.nome, c.whatsapp, MAX(a.data_criacao) as ultima_visita, COUNT(a.id) as total_visitas FROM clientes c LEFT JOIN agendamentos a ON c.whatsapp = a.cliente_whatsapp AND a.profissional_id = $1 WHERE c.profissional_id = $1 GROUP BY c.nome, c.whatsapp ORDER BY ultima_visita DESC`, [req.profissionalId]); res.json(result.rows); } catch (error) { res.status(500).json({ error: 'Erro ao buscar CRM' }); } });
-app.get('/api/public/profissional/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT nome, telefone, horarios_trabalho, logo_url FROM profissionais WHERE id = $1', [req.params.id_profissional])).rows[0] || {}); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
+
+app.get('/api/clientes', verificarToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        c.id,
+        c.nome,
+        c.whatsapp,
+        c.nascimento,
+        c.observacoes,
+        c.data_cadastro,
+        MAX(a.data_criacao) as ultima_visita,
+        COUNT(a.id) as total_visitas,
+        COALESCE(SUM(CASE WHEN a.status = 'concluido' THEN a.valor ELSE 0 END), 0) as total_gasto,
+        (
+          SELECT a2.servico_nome
+          FROM agendamentos a2
+          WHERE a2.profissional_id = c.profissional_id
+          AND (
+            a2.cliente_id = c.id
+            OR REGEXP_REPLACE(COALESCE(a2.cliente_whatsapp, ''), '\\D', '', 'g') = REGEXP_REPLACE(COALESCE(c.whatsapp, ''), '\\D', '', 'g')
+          )
+          ORDER BY a2.data_criacao DESC
+          LIMIT 1
+        ) as ultimo_servico,
+        (
+          SELECT a3.funcionario_nome
+          FROM agendamentos a3
+          WHERE a3.profissional_id = c.profissional_id
+          AND (
+            a3.cliente_id = c.id
+            OR REGEXP_REPLACE(COALESCE(a3.cliente_whatsapp, ''), '\\D', '', 'g') = REGEXP_REPLACE(COALESCE(c.whatsapp, ''), '\\D', '', 'g')
+          )
+          AND a3.funcionario_nome IS NOT NULL
+          ORDER BY a3.data_criacao DESC
+          LIMIT 1
+        ) as profissional_preferido
+      FROM clientes c
+      LEFT JOIN agendamentos a
+        ON a.profissional_id = c.profissional_id
+        AND (
+          a.cliente_id = c.id
+          OR REGEXP_REPLACE(COALESCE(a.cliente_whatsapp, ''), '\\D', '', 'g') = REGEXP_REPLACE(COALESCE(c.whatsapp, ''), '\\D', '', 'g')
+        )
+      WHERE c.profissional_id = $1
+      GROUP BY c.id
+      ORDER BY ultima_visita DESC NULLS LAST, c.data_cadastro DESC
+    `, [req.profissionalId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar CRM:', error);
+    res.status(500).json({ error: 'Erro ao buscar CRM' });
+  }
+});
+
+app.post('/api/clientes', verificarToken, async (req, res) => {
+  const { nome, whatsapp, nascimento, observacoes } = req.body;
+
+  if (!nome || !String(nome).trim()) {
+    return res.status(400).json({ error: 'Nome do cliente é obrigatório.' });
+  }
+
+  try {
+    const whatsLimpo = String(whatsapp || '').replace(/\D/g, '');
+
+    if (whatsLimpo) {
+      const existente = await pool.query(
+        `SELECT * FROM clientes
+         WHERE profissional_id = $1
+         AND REGEXP_REPLACE(COALESCE(whatsapp, ''), '\\D', '', 'g') = $2
+         LIMIT 1`,
+        [req.profissionalId, whatsLimpo]
+      );
+
+      if (existente.rows.length > 0) {
+        const atualizado = await pool.query(
+          `UPDATE clientes
+           SET nome = $1,
+               whatsapp = $2,
+               nascimento = COALESCE($3, nascimento),
+               observacoes = COALESCE($4, observacoes)
+           WHERE id = $5 AND profissional_id = $6
+           RETURNING *`,
+          [nome.trim(), whatsapp || '', nascimento || null, observacoes || null, existente.rows[0].id, req.profissionalId]
+        );
+        return res.status(200).json(atualizado.rows[0]);
+      }
+    }
+
+    const result = await pool.query(
+      `INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento, observacoes)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [req.profissionalId, nome.trim(), whatsapp || '', nascimento || null, observacoes || null]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao cadastrar cliente:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar cliente.' });
+  }
+});
+
+app.get('/api/clientes/:id/historico', verificarToken, async (req, res) => {
+  try {
+    const cliente = await pool.query(
+      'SELECT * FROM clientes WHERE id = $1 AND profissional_id = $2',
+      [req.params.id, req.profissionalId]
+    );
+
+    if (cliente.rows.length === 0) {
+      return res.status(404).json({ error: 'Cliente não encontrado.' });
+    }
+
+    const whatsLimpo = String(cliente.rows[0].whatsapp || '').replace(/\D/g, '');
+
+    const historico = await pool.query(
+      `SELECT *
+       FROM agendamentos
+       WHERE profissional_id = $1
+       AND (
+         cliente_id = $2
+         OR REGEXP_REPLACE(COALESCE(cliente_whatsapp, ''), '\\D', '', 'g') = $3
+       )
+       ORDER BY data_criacao DESC`,
+      [req.profissionalId, req.params.id, whatsLimpo]
+    );
+
+    res.json(historico.rows);
+  } catch (error) {
+    console.error('Erro ao buscar histórico do cliente:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico.' });
+  }
+});
+app.get('/api/public/profissional/:id_profissional', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT nome, telefone, horarios_trabalho, logo_url FROM profissionais WHERE id = $1',
+      [req.params.id_profissional]
+    );
+
+    if (result.rows.length === 0) return res.json({});
+
+    const profissional = result.rows[0];
+    const horariosBase = String(profissional.horarios_trabalho || '')
+      .split(',')
+      .map(h => h.trim())
+      .filter(Boolean);
+
+    res.json({
+      ...profissional,
+      horarios_trabalho: gerarGradeAgenda(horariosBase, 15).join(',')
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro' });
+  }
+});
 app.get('/api/public/servicos/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT * FROM servicos WHERE profissional_id = $1 ORDER BY id DESC', [req.params.id_profissional])).rows); } catch(e) { res.status(500).json({ error: 'erro' }); } });
 app.get('/api/public/funcionarios/:id_profissional', async (req, res) => { try { res.json((await pool.query('SELECT id, nome FROM funcionarios WHERE salao_id = $1 ORDER BY id ASC', [req.params.id_profissional])).rows); } catch (error) { res.status(500).json({ error: 'Erro func' }); } });
 app.get('/api/public/historico/:id_profissional/:whatsapp', async (req, res) => { try { const result = await pool.query(`SELECT servico_nome FROM agendamentos WHERE profissional_id = $1 AND cliente_whatsapp = $2 ORDER BY data_criacao DESC LIMIT 1`, [req.params.id_profissional, req.params.whatsapp]); res.json({ ultimoServico: result.rows.length > 0 ? result.rows[0].servico_nome : null }); } catch(e){ res.status(500).json({ error: 'erro' }); } });
@@ -287,11 +531,13 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
       [idProfissional]
     );
 
-    const horariosTrabalho = (profissional.rows[0]?.horarios_trabalho || '')
+    const horariosBase = (profissional.rows[0]?.horarios_trabalho || '')
       .split(',')
       .map(h => h.trim())
       .filter(Boolean)
       .sort();
+
+    const horariosTrabalho = gerarGradeAgenda(horariosBase, 15);
 
     if (horariosTrabalho.length === 0) {
       return res.json([]);
@@ -337,10 +583,6 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
 
     const intervalosOcupados = montarIntervalosOcupados(agendamentosDoDia);
 
-    const passoAgenda = calcularPassoAgenda(horariosTrabalho);
-    const ultimoInicio = horaParaMinutos(horariosTrabalho[horariosTrabalho.length - 1]);
-    const limiteFimExpediente = ultimoInicio + passoAgenda;
-
     const hojeISO = new Date().toISOString().split('T')[0];
     const agora = new Date();
     const agoraMinutos = agora.getHours() * 60 + agora.getMinutes();
@@ -357,8 +599,8 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
         return true;
       }
 
-      // Bloqueia se o serviço não couber no expediente
-      if (fim > limiteFimExpediente) {
+      // Bloqueia se o serviço não couber na grade de atendimento de 15 minutos
+      if (!horarioCabeNaGrade(horario, duracaoMinutos, horariosTrabalho)) {
         return true;
       }
 
@@ -404,6 +646,36 @@ app.post('/api/public/agendamentos', async (req, res) => {
 
     const horarioFim = minutosParaHora(inicioMinutos + duracaoMinutos);
     const funcionarioId = funcionario_id ? parseInt(funcionario_id, 10) : null;
+
+    const hojeISO = new Date().toISOString().split('T')[0];
+    const dataSelecionadaISO = dataBRParaISO(dataBR);
+    if (dataSelecionadaISO && dataSelecionadaISO < hojeISO) {
+      return res.status(400).json({ error: 'Não é possível agendar em data passada.' });
+    }
+
+    const profissionalResult = await pool.query(
+      'SELECT horarios_trabalho FROM profissionais WHERE id = $1',
+      [id_profissional]
+    );
+
+    if (profissionalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Profissional não encontrado.' });
+    }
+
+    const horariosTrabalho = String(profissionalResult.rows[0].horarios_trabalho || '')
+      .split(',')
+      .map(h => h.trim())
+      .filter(Boolean)
+      .sort();
+
+    if (horariosTrabalho.length > 0) {
+      const passoAgenda = calcularPassoAgenda(horariosTrabalho);
+      const ultimoInicio = horaParaMinutos(horariosTrabalho[horariosTrabalho.length - 1]);
+      const limiteFimExpediente = ultimoInicio + passoAgenda;
+      if (!horariosTrabalho.includes(horario) || inicioMinutos + duracaoMinutos > limiteFimExpediente) {
+        return res.status(400).json({ error: 'O serviço não cabe neste horário de expediente.' });
+      }
+    }
 
     // Busca todos os agendamentos do dia.
     const agendamentosResult = await pool.query(
@@ -454,22 +726,44 @@ app.post('/api/public/agendamentos', async (req, res) => {
       });
     }
 
-    const clienteExiste = await pool.query(
-      'SELECT id FROM clientes WHERE profissional_id = $1 AND whatsapp = $2',
-      [id_profissional, whatsapp]
-    );
+    const whatsLimpo = String(whatsapp || '').replace(/\D/g, '');
+    let clienteId = null;
 
-    if (clienteExiste.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4)',
-        [id_profissional, nome, whatsapp, nascimento]
+    if (whatsLimpo) {
+      const clienteExiste = await pool.query(
+        `SELECT id FROM clientes
+         WHERE profissional_id = $1
+         AND REGEXP_REPLACE(COALESCE(whatsapp, ''), '\\D', '', 'g') = $2
+         LIMIT 1`,
+        [id_profissional, whatsLimpo]
       );
+
+      if (clienteExiste.rows.length === 0) {
+        const novoCliente = await pool.query(
+          'INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4) RETURNING id',
+          [id_profissional, nome, whatsapp, nascimento]
+        );
+        clienteId = novoCliente.rows[0].id;
+      } else {
+        clienteId = clienteExiste.rows[0].id;
+        await pool.query(
+          'UPDATE clientes SET nome = $1, whatsapp = $2, nascimento = COALESCE($3, nascimento) WHERE id = $4 AND profissional_id = $5',
+          [nome, whatsapp, nascimento || null, clienteId, id_profissional]
+        );
+      }
+    } else {
+      const novoCliente = await pool.query(
+        'INSERT INTO clientes (profissional_id, nome, whatsapp, nascimento) VALUES ($1, $2, $3, $4) RETURNING id',
+        [id_profissional, nome, whatsapp || '', nascimento]
+      );
+      clienteId = novoCliente.rows[0].id;
     }
 
     const result = await pool.query(
       `INSERT INTO agendamentos
       (
         profissional_id,
+        cliente_id,
         cliente_nome,
         cliente_whatsapp,
         servico_nome,
@@ -481,10 +775,11 @@ app.post('/api/public/agendamentos', async (req, res) => {
         funcionario_id,
         funcionario_nome
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         id_profissional,
+        clienteId,
         nome,
         whatsapp,
         servico_nome,
