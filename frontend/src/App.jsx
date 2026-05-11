@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
 import AgendaTimeline from './components/AgendaTimeline';
+import AgendaMobile from './components/AgendaMobile';
 import ClienteCard from './components/ClienteCard';
 import ClienteHistoricoModal from './components/ClienteHistoricoModal';
 import ReagendarClienteModal from './components/ReagendarClienteModal';
@@ -516,11 +517,31 @@ function PainelProfissional({ token, usuario, onLogout }) {
               </div>
             </div>
 
-            <AgendaTimeline
-              agendamentos={agendamentos}
-              funcionarios={funcionarios}
-              onConcluir={concluirAtendimento}
-            />
+           {/* MOBILE */}
+<div className="block lg:hidden">
+
+  <AgendaMobile
+    agendamentos={agendamentos}
+    onNovoAgendamento={() => {
+      console.log('Novo agendamento');
+    }}
+    onFinalizar={(agendamento) => {
+      concluirAtendimento(agendamento);
+    }}
+  />
+
+</div>
+
+{/* DESKTOP */}
+<div className="hidden lg:block">
+
+  <AgendaTimeline
+    agendamentos={agendamentos}
+    funcionarios={funcionarios}
+    onConcluir={concluirAtendimento}
+  />
+
+</div>
 
             <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-5">
               <p className="text-[#A8A8A8] text-xs leading-relaxed">
