@@ -8,6 +8,7 @@ import AgendaMobile from './components/AgendaMobile';
 import ClienteCard from './components/ClienteCard';
 import ClienteHistoricoModal from './components/ClienteHistoricoModal';
 import ReagendarClienteModal from './components/ReagendarClienteModal';
+import NovoAgendamentoModal from './components/NovoAgendamentoModal';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
