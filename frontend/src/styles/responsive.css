@@ -1,0 +1,279 @@
+/* =========================
+   AURUM RESPONSIVE SYSTEM
+========================= */
+
+:root{
+  --header-height: 72px;
+  --bottom-nav-height: 82px;
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+/* =========================
+   RESET RESPONSIVO
+========================= */
+
+*{
+  min-width: 0;
+}
+
+html,
+body,
+#root{
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body{
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: #0D0D0D;
+}
+
+/* =========================
+   SAFE AREA IOS
+========================= */
+
+.safe-bottom{
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom));
+}
+
+.safe-top{
+  padding-top: env(safe-area-inset-top);
+}
+
+/* =========================
+   SCROLL PREMIUM
+========================= */
+
+::-webkit-scrollbar{
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track{
+  background: #111;
+}
+
+::-webkit-scrollbar-thumb{
+  background: #2A2A2A;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+  background: #D4AF37;
+}
+
+/* =========================
+   RESPONSIVE CONTAINERS
+========================= */
+
+.aurum-container{
+  width: 100%;
+  max-width: 1800px;
+  margin-inline: auto;
+}
+
+.aurum-page{
+  width: 100%;
+  padding-inline: 16px;
+}
+
+@media (min-width: 768px){
+
+  .aurum-page{
+    padding-inline: 24px;
+  }
+
+}
+
+@media (min-width: 1280px){
+
+  .aurum-page{
+    padding-inline: 32px;
+  }
+
+}
+
+/* =========================
+   RESPONSIVE GRID
+========================= */
+
+.aurum-grid{
+  display: grid;
+  gap: 16px;
+}
+
+.aurum-grid-2{
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.aurum-grid-3{
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.aurum-grid-4{
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 768px){
+
+  .aurum-grid-2{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (min-width: 1024px){
+
+  .aurum-grid-3{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+}
+
+@media (min-width: 1280px){
+
+  .aurum-grid-4{
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+}
+
+/* =========================
+   MODAIS
+========================= */
+
+.aurum-modal{
+  width: 100%;
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.aurum-modal-content{
+  overflow-y: auto;
+  max-height: calc(92vh - 90px);
+}
+
+@media (max-width: 768px){
+
+  .aurum-modal{
+    border-radius: 24px;
+  }
+
+  .aurum-modal-content{
+    max-height: calc(100vh - 120px);
+  }
+
+}
+
+/* =========================
+   TIMELINE MOBILE
+========================= */
+
+.timeline-scroll{
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timeline-scroll::-webkit-scrollbar{
+  height: 6px;
+}
+
+.timeline-mobile-width{
+  min-width: 1100px;
+}
+
+@media (max-width: 768px){
+
+  .timeline-mobile-width{
+    min-width: 900px;
+  }
+
+}
+
+/* =========================
+   CARDS RESPONSIVOS
+========================= */
+
+.aurum-card{
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 640px){
+
+  .aurum-card{
+    border-radius: 24px;
+  }
+
+}
+
+/* =========================
+   TEXTOS RESPONSIVOS
+========================= */
+
+.aurum-title{
+  font-size: clamp(1.5rem, 3vw, 3rem);
+}
+
+.aurum-subtitle{
+  font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+}
+
+/* =========================
+   BOTTOM NAV
+========================= */
+
+.bottom-nav-safe{
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px){
+
+  .desktop-sidebar-space{
+    padding-left: 90px;
+  }
+
+}
+
+/* =========================
+   TOUCH DEVICES
+========================= */
+
+@media (hover: none){
+
+  button,
+  a,
+  input,
+  select{
+    min-height: 44px;
+  }
+
+}
+
+/* =========================
+   TABLETS
+========================= */
+
+@media (min-width: 768px) and (max-width: 1180px){
+
+  .tablet-grid-2{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+/* =========================
+   LARGE DESKTOP
+========================= */
+
+@media (min-width: 1600px){
+
+  .ultra-wide-container{
+    max-width: 1900px;
+    margin-inline: auto;
+  }
+
+}

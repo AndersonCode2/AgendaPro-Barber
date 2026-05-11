@@ -6,8 +6,14 @@ import {
   UserRound,
   Sparkles,
   Scissors,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
+
+import {
+  gerarHorariosDisponiveis,
+  obterDuracaoServico
+} from '../utils/agendaInteligente';
 
 export default function ReagendarClienteModal({
   aberto,
@@ -15,51 +21,67 @@ export default function ReagendarClienteModal({
   cliente,
   funcionarios = [],
   servicos = [],
-  horariosDisponiveis = [],
+  agendamentos = [],
+  horariosBase = [],
   onConfirmar
 }) {
-
   const servicoFavorito =
     cliente?.servico_favorito ||
     cliente?.ultimo_servico ||
     '';
 
+  const servicoInicial = servicos.find((servico) => {
+    return servico.nome === servicoFavorito;
+  }) || null;
+
   const profissionalPreferido =
     cliente?.profissional_preferido || '';
 
+  const funcionarioInicial = funcionarios.find((funcionario) => {
+    return funcionario.nome === profissionalPreferido;
+  }) || null;
+
   const [data, setData] = useState('');
   const [horario, setHorario] = useState('');
-  const [servicoSelecionado, setServicoSelecionado] = useState(servicoFavorito);
-  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState(profissionalPreferido);
+  const [servicoSelecionado, setServicoSelecionado] = useState(servicoInicial);
+  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState(funcionarioInicial);
+  const [enviando, setEnviando] = useState(false);
 
-  const horarios = useMemo(() => {
-    if (Array.isArray(horariosDisponiveis) && horariosDisponiveis.length > 0) {
-      return horariosDisponiveis;
-    }
+  const duracaoServico = useMemo(() => {
+    return obterDuracaoServico(servicoSelecionado);
+  }, [servicoSelecionado]);
 
-    return [
-      '08:00',
-      '08:30',
-      '09:00',
-      '09:30',
-      '10:00',
-      '10:30',
-      '11:00',
-      '13:00',
-      '13:30',
-      '14:00',
-      '14:30',
-      '15:00',
-      '15:30',
-      '16:00',
-      '16:30',
-      '17:00'
-    ];
-  }, [horariosDisponiveis]);
+  const horariosLivres = useMemo(() => {
+    if (!data || !funcionarioSelecionado?.id) return [];
+
+    return gerarHorariosDisponiveis({
+      dataSelecionada: data,
+      funcionarioId: funcionarioSelecionado.id,
+      duracaoServico,
+      agendamentos,
+      horariosBase
+    });
+  }, [
+    data,
+    funcionarioSelecionado,
+    duracaoServico,
+    agendamentos,
+    horariosBase
+  ]);
 
   if (!aberto || !cliente) return null;
 
-  const confirmar = () => {
+  const confirmar = async () => {
+    if (!servicoSelecionado) {
+      alert('Selecione um serviço.');
+      return;
+    }
+
+    if (!funcionarioSelecionado) {
+      alert('Selecione um profissional.');
+      return;
+    }
+
     if (!data || !horario) {
       alert('Selecione a data e horário.');
       return;
@@ -70,24 +92,33 @@ export default function ReagendarClienteModal({
       data,
       horario,
       servico: servicoSelecionado,
-      funcionario: funcionarioSelecionado
+      funcionario: funcionarioSelecionado,
+      duracao_minutos: duracaoServico
     };
 
-    if (onConfirmar) {
-      onConfirmar(payload);
-    }
+    setEnviando(true);
 
-    onClose();
+    try {
+      if (onConfirmar) {
+        await onConfirmar(payload);
+      }
+
+      onClose();
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao reagendar cliente.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4">
+    <div className="fixed inset-0 z-999 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4">
 
       <div className="w-full max-w-3xl bg-linear-to-br from-[#1A1A1A] to-[#0D0D0D] border border-[#2A2A2A] rounded-4xl overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.6)] relative">
 
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[#D4AF37]/10 blur-[120px] rounded-full"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[#D4AF37]/10 blur-[120px] rounded-full pointer-events-none"></div>
 
-        {/* HEADER */}
         <div className="relative z-10 border-b border-[#2A2A2A] p-6 flex items-start justify-between gap-4">
 
           <div className="flex items-center gap-4">
@@ -106,7 +137,7 @@ export default function ReagendarClienteModal({
               </h2>
 
               <p className="text-[#8A8A8A] text-sm mt-1">
-                Agende rapidamente o próximo atendimento do cliente.
+                Horários reais filtrados por serviço, duração e profissional.
               </p>
             </div>
 
@@ -121,7 +152,6 @@ export default function ReagendarClienteModal({
 
         </div>
 
-        {/* BODY */}
         <div className="relative z-10 p-6 space-y-6">
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -135,18 +165,22 @@ export default function ReagendarClienteModal({
                 <Scissors size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
 
                 <select
-                  value={servicoSelecionado}
-                  onChange={(e) => setServicoSelecionado(e.target.value)}
+                  value={servicoSelecionado?.id || ''}
+                  onChange={(e) => {
+                    const servico = servicos.find((item) => String(item.id) === String(e.target.value));
+                    setServicoSelecionado(servico || null);
+                    setHorario('');
+                  }}
                   className="w-full bg-[#111] border border-[#2A2A2A] rounded-2xl py-4 pl-12 pr-4 text-white outline-none"
                 >
                   <option value="">Selecione</option>
 
-                  {servicos.map((servico, index) => (
+                  {servicos.map((servico) => (
                     <option
-                      key={index}
-                      value={servico.nome || servico}
+                      key={servico.id}
+                      value={servico.id}
                     >
-                      {servico.nome || servico}
+                      {servico.nome} • {servico.tempo || '60 min'}
                     </option>
                   ))}
                 </select>
@@ -162,18 +196,22 @@ export default function ReagendarClienteModal({
                 <UserRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
 
                 <select
-                  value={funcionarioSelecionado}
-                  onChange={(e) => setFuncionarioSelecionado(e.target.value)}
+                  value={funcionarioSelecionado?.id || ''}
+                  onChange={(e) => {
+                    const funcionario = funcionarios.find((item) => String(item.id) === String(e.target.value));
+                    setFuncionarioSelecionado(funcionario || null);
+                    setHorario('');
+                  }}
                   className="w-full bg-[#111] border border-[#2A2A2A] rounded-2xl py-4 pl-12 pr-4 text-white outline-none"
                 >
                   <option value="">Selecione</option>
 
-                  {funcionarios.map((funcionario, index) => (
+                  {funcionarios.map((funcionario) => (
                     <option
-                      key={index}
-                      value={funcionario.nome || funcionario}
+                      key={funcionario.id}
+                      value={funcionario.id}
                     >
-                      {funcionario.nome || funcionario}
+                      {funcionario.nome}
                     </option>
                   ))}
                 </select>
@@ -194,8 +232,12 @@ export default function ReagendarClienteModal({
 
                 <input
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   value={data}
-                  onChange={(e) => setData(e.target.value)}
+                  onChange={(e) => {
+                    setData(e.target.value);
+                    setHorario('');
+                  }}
                   className="w-full bg-[#111] border border-[#2A2A2A] rounded-2xl py-4 pl-12 pr-4 text-white outline-none"
                 />
               </div>
@@ -203,7 +245,7 @@ export default function ReagendarClienteModal({
 
             <div className="space-y-3">
               <label className="text-[#8A8A8A] text-xs uppercase tracking-widest">
-                Horário
+                Horário disponível
               </label>
 
               <div className="relative">
@@ -212,12 +254,19 @@ export default function ReagendarClienteModal({
                 <select
                   value={horario}
                   onChange={(e) => setHorario(e.target.value)}
-                  className="w-full bg-[#111] border border-[#2A2A2A] rounded-2xl py-4 pl-12 pr-4 text-white outline-none"
+                  disabled={!data || !servicoSelecionado || !funcionarioSelecionado}
+                  className="w-full bg-[#111] border border-[#2A2A2A] rounded-2xl py-4 pl-12 pr-4 text-white outline-none disabled:opacity-50"
                 >
-                  <option value="">Selecione</option>
+                  <option value="">
+                    {!data || !servicoSelecionado || !funcionarioSelecionado
+                      ? 'Selecione serviço, profissional e data'
+                      : horariosLivres.length === 0
+                        ? 'Nenhum horário livre'
+                        : 'Selecione'}
+                  </option>
 
-                  {horarios.map((hora, index) => (
-                    <option key={index} value={hora}>
+                  {horariosLivres.map((hora) => (
+                    <option key={hora} value={hora}>
                       {hora}
                     </option>
                   ))}
@@ -227,7 +276,6 @@ export default function ReagendarClienteModal({
 
           </div>
 
-          {/* RESUMO */}
           <div className="bg-[#111] border border-[#2A2A2A] rounded-4xl p-5 space-y-4">
 
             <div className="flex items-center gap-2">
@@ -238,7 +286,7 @@ export default function ReagendarClienteModal({
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 text-sm">
 
               <div>
                 <p className="text-[#6F6F6F] uppercase tracking-widest text-[10px] mb-1">
@@ -256,7 +304,7 @@ export default function ReagendarClienteModal({
                 </p>
 
                 <p className="text-white">
-                  {servicoSelecionado || '-'}
+                  {servicoSelecionado?.nome || '-'}
                 </p>
               </div>
 
@@ -266,7 +314,17 @@ export default function ReagendarClienteModal({
                 </p>
 
                 <p className="text-white">
-                  {funcionarioSelecionado || '-'}
+                  {funcionarioSelecionado?.nome || '-'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[#6F6F6F] uppercase tracking-widest text-[10px] mb-1">
+                  Duração
+                </p>
+
+                <p className="text-[#D4AF37]">
+                  {duracaoServico} min
                 </p>
               </div>
 
@@ -274,7 +332,6 @@ export default function ReagendarClienteModal({
 
           </div>
 
-          {/* FOOTER */}
           <div className="flex flex-col xl:flex-row gap-3 pt-2">
 
             <button
@@ -286,9 +343,17 @@ export default function ReagendarClienteModal({
 
             <button
               onClick={confirmar}
-              className="flex-1 bg-[#D4AF37] hover:brightness-110 text-[#0D0D0D] rounded-2xl py-4 font-bold transition-all"
+              disabled={enviando}
+              className="flex-1 bg-[#D4AF37] hover:brightness-110 text-[#0D0D0D] rounded-2xl py-4 font-bold transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              Confirmar reagendamento
+              {enviando ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Confirmar reagendamento'
+              )}
             </button>
 
           </div>

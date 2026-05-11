@@ -6,6 +6,7 @@ import PaginaCliente from './PaginaCliente';
 import AgendaTimeline from './components/AgendaTimeline';
 import ClienteCard from './components/ClienteCard';
 import ClienteHistoricoModal from './components/ClienteHistoricoModal';
+import ReagendarClienteModal from './components/ReagendarClienteModal';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
@@ -194,6 +195,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
 
   const [clienteHistoricoAberto, setClienteHistoricoAberto] = useState(false);
   const [clienteSelecionadoHistorico, setClienteSelecionadoHistorico] = useState(null);
+  const [clienteReagendarAberto, setClienteReagendarAberto] = useState(false);
+  const [clienteSelecionadoReagendar, setClienteSelecionadoReagendar] = useState(null);
 
   const [novoServico, setNovoServico] = useState({ nome: '', preco: '', tempo: '30 min' });
   const [vendaNome, setVendaNome] = useState('');
@@ -352,6 +355,58 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const abrirHistoricoCliente = (cliente) => {
     setClienteSelecionadoHistorico(cliente);
     setClienteHistoricoAberto(true);
+  };
+
+  const abrirReagendarCliente = (cliente) => {
+    setClienteSelecionadoReagendar(cliente);
+    setClienteReagendarAberto(true);
+  };
+
+  const confirmarReagendamentoCliente = async ({
+    cliente,
+    data,
+    horario,
+    servico,
+    funcionario,
+    duracao_minutos
+  }) => {
+    const valorServico = Number(servico?.preco || 0);
+
+    const payload = {
+      id_profissional: usuario.id,
+      nome: cliente.nome,
+      whatsapp: cliente.whatsapp,
+      nascimento: cliente.nascimento || '',
+      servico_nome: servico.nome,
+      data_reserva: data.split('-').reverse().join('/'),
+      horario,
+      valor: valorServico,
+      funcionario_id: funcionario?.id || null,
+      funcionario_nome: funcionario?.nome || null,
+      duracao_minutos: duracao_minutos || 60
+    };
+
+    const res = await fetch(`${API_URL}/public/agendamentos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error('Erro ao reagendar cliente.');
+    }
+
+    await carregarTudo();
+
+    if (cliente.whatsapp) {
+      const numero = cliente.whatsapp.replace(/\D/g, '');
+      const mensagem = `Olá ${cliente.nome.split(' ')[0]}! ✨\n\nSeu novo horário foi agendado com sucesso no ${usuario.nome}.\n\n📅 Data: ${payload.data_reserva}\n⏰ Horário: ${horario}\n💎 Serviço: ${servico.nome}\n👤 Profissional: ${funcionario?.nome || 'Equipe'}\n\nEsperamos você!`;
+
+      window.open(
+        `https://wa.me/55${numero}?text=${encodeURIComponent(mensagem)}`,
+        '_blank'
+      );
+    }
   };
 
   const resolverTicket = async (id) => { await fetch(`${API_URL}/ceo/tickets/${id}`, { method: 'DELETE', headers: headersAPI }); carregarTudo(); };
@@ -546,7 +601,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
                       abrirHistoricoCliente(clienteSelecionado);
                     }}
                     onReagendar={(clienteSelecionado) => {
-                      console.log('Reagendar:', clienteSelecionado);
+                      abrirReagendarCliente(clienteSelecionado);
                     }}
                   />
 
@@ -743,60 +798,25 @@ function PainelProfissional({ token, usuario, onLogout }) {
         }
       />
 
+      <ReagendarClienteModal
+        aberto={clienteReagendarAberto}
+        onClose={() => setClienteReagendarAberto(false)}
+        cliente={clienteSelecionadoReagendar}
+        funcionarios={funcionarios}
+        servicos={servicos}
+        agendamentos={agendamentos}
+        horariosBase={meusHorarios}
+        onConfirmar={confirmarReagendamentoCliente}
+      />
+
       <nav className="bg-[#1A1A1A] border-t border-[#2A2A2A] fixed bottom-0 w-full flex justify-around p-3 pb-safe z-10">
-
-        <NavButton
-          icone={<Home />}
-          texto="Início"
-          ativo={telaAtiva === 'home'}
-          onClick={() => setTelaAtiva('home')}
-        />
-
-        <NavButton
-          icone={<Calendar />}
-          texto="Agenda"
-          ativo={telaAtiva === 'agenda'}
-          onClick={() => setTelaAtiva('agenda')}
-        />
-
-        <NavButton
-          icone={<DollarSign />}
-          texto="Caixa"
-          ativo={telaAtiva === 'caixa'}
-          onClick={() => setTelaAtiva('caixa')}
-        />
-
-        <NavButton
-          icone={<UsersRound />}
-          texto="Clientes"
-          ativo={telaAtiva === 'clientes'}
-          onClick={() => setTelaAtiva('clientes')}
-        />
-
-        <NavButton
-          icone={<Briefcase />}
-          texto="Equipe"
-          ativo={telaAtiva === 'equipe'}
-          onClick={() => setTelaAtiva('equipe')}
-        />
-
-        <NavButton
-          icone={<Settings />}
-          texto="Ajustes"
-          ativo={telaAtiva === 'config'}
-          onClick={() => setTelaAtiva('config')}
-        />
-
-        {usuario.is_ceo && (
-          <NavButton
-            icone={<Shield />}
-            texto="Admin"
-            ativo={telaAtiva === 'ceo'}
-            onClick={() => setTelaAtiva('ceo')}
-            isDestaque={true}
-          />
-        )}
-
+        <NavButton icone={<Home />} texto="Início" ativo={telaAtiva === 'home'} onClick={() => setTelaAtiva('home')} />
+        <NavButton icone={<Calendar />} texto="Agenda" ativo={telaAtiva === 'agenda'} onClick={() => setTelaAtiva('agenda')} />
+        <NavButton icone={<DollarSign />} texto="Caixa" ativo={telaAtiva === 'caixa'} onClick={() => setTelaAtiva('caixa')} />
+        <NavButton icone={<UsersRound />} texto="Clientes" ativo={telaAtiva === 'clientes'} onClick={() => setTelaAtiva('clientes')} />
+        <NavButton icone={<Briefcase />} texto="Equipe" ativo={telaAtiva === 'equipe'} onClick={() => setTelaAtiva('equipe')} />
+        <NavButton icone={<Settings />} texto="Ajustes" ativo={telaAtiva === 'config'} onClick={() => setTelaAtiva('config')} />
+        {usuario.is_ceo && <NavButton icone={<Shield />} texto="Admin" ativo={telaAtiva === 'ceo'} onClick={() => setTelaAtiva('ceo')} isDestaque={true} />}
       </nav>
 
       {modalAberto && (
