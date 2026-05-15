@@ -57,6 +57,33 @@ const verificarToken = (req, res, next) => {
 };
 const verificarCEO = (req, res, next) => { if (!req.isCeo) return res.status(403).json({ error: 'Acesso negado.' }); next(); };
 
+const FUSO_HORARIO_PADRAO = 'America/Sao_Paulo';
+const PASSO_PADRAO_AGENDA = 15;
+
+const obterPartesDataHoraBrasil = () => {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO_HORARIO_PADRAO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+
+  const mapa = partes.reduce((acc, item) => {
+    if (item.type !== 'literal') acc[item.type] = item.value;
+    return acc;
+  }, {});
+
+  return {
+    iso: `${mapa.year}-${mapa.month}-${mapa.day}`,
+    br: `${mapa.day}/${mapa.month}/${mapa.year}`,
+    minutos: Number(mapa.hour) * 60 + Number(mapa.minute)
+  };
+};
+
+
 // ==========================================
 // ⏱️ UTILITÁRIOS DE AGENDA INTELIGENTE
 // ==========================================
@@ -103,39 +130,36 @@ const calcularPassoAgenda = (horarios) => {
   return menorPasso || 60;
 };
 
-const gerarGradeAgenda = (horariosBase = [], intervalo = 15) => {
-  const minutos = horariosBase
+const prepararExpediente = (horariosBrutos = []) => {
+  const minutosBase = horariosBrutos
     .map(horaParaMinutos)
     .filter(v => v !== null)
     .sort((a, b) => a - b);
 
-  if (minutos.length === 0) return [];
+  const unicos = [...new Set(minutosBase)];
 
-  const passoBase = calcularPassoAgenda(horariosBase) || 60;
-  const grade = new Set();
-
-  minutos.forEach(inicioBloco => {
-    const fimBloco = inicioBloco + passoBase;
-    for (let minuto = inicioBloco; minuto < fimBloco; minuto += intervalo) {
-      grade.add(minutosParaHora(minuto));
-    }
-  });
-
-  return Array.from(grade).sort();
-};
-
-const horarioCabeNaGrade = (horarioInicio, duracaoMinutos, gradeHorarios) => {
-  const inicio = horaParaMinutos(horarioInicio);
-  if (inicio === null) return false;
-
-  const gradeSet = new Set(gradeHorarios);
-  const fim = inicio + duracaoMinutos;
-
-  for (let minuto = inicio; minuto < fim; minuto += 15) {
-    if (!gradeSet.has(minutosParaHora(minuto))) return false;
+  if (unicos.length === 0) {
+    return { horarios: [], inicioExpediente: null, fimExpediente: null, passoOriginal: PASSO_PADRAO_AGENDA };
   }
 
-  return true;
+  const passoOriginal = calcularPassoAgenda(unicos.map(minutosParaHora));
+  const inicioExpediente = unicos[0];
+  const fimExpediente = unicos[unicos.length - 1] + Math.max(passoOriginal, PASSO_PADRAO_AGENDA);
+
+  const horarios = [];
+  for (let minuto = inicioExpediente; minuto < fimExpediente; minuto += PASSO_PADRAO_AGENDA) {
+    horarios.push(minutosParaHora(minuto));
+  }
+
+  return { horarios, inicioExpediente, fimExpediente, passoOriginal };
+};
+
+const horarioDentroDoExpediente = (horarioInicio, duracaoMinutos, expediente) => {
+  const inicio = horaParaMinutos(horarioInicio);
+  if (inicio === null || !expediente || expediente.inicioExpediente === null || expediente.fimExpediente === null) return false;
+  const fim = inicio + duracaoMinutos;
+  const alinhadoAoPasso = inicio % PASSO_PADRAO_AGENDA === 0;
+  return alinhadoAoPasso && inicio >= expediente.inicioExpediente && fim <= expediente.fimExpediente;
 };
 
 const existeConflitoHorario = (inicioA, fimA, inicioB, fimB) => {
@@ -279,58 +303,7 @@ app.post('/api/webhook', async (req, res) => {
 
 
 // ROTAS PADRÕES
-app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => {
-  try {
-    const empresas = await pool.query(`
-      SELECT
-        p.id,
-        p.nome,
-        p.email,
-        p.telefone,
-        p.status_assinatura,
-        p.data_vencimento,
-        COALESCE(SUM(v.valor), 0) as faturamento_total
-      FROM profissionais p
-      LEFT JOIN vendas v ON p.id = v.profissional_id
-      WHERE p.is_ceo = FALSE
-      GROUP BY p.id
-      ORDER BY p.data_cadastro DESC
-    `);
-
-    res.json({
-      totalEmpresas: empresas.rows.length,
-      faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0),
-      empresas: empresas.rows
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro CEO' });
-  }
-});
-
-app.post('/api/ceo/usuarios/:id/renovar', verificarToken, verificarCEO, async (req, res) => {
-  try {
-    const dias = Math.max(parseInt(req.body?.dias, 10) || 30, 1);
-
-    const result = await pool.query(
-      `UPDATE profissionais
-       SET status_assinatura = 'pago',
-           data_vencimento = GREATEST(COALESCE(data_vencimento, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP) + ($1 || ' days')::interval
-       WHERE id = $2 AND is_ceo = FALSE
-       RETURNING id, nome, email, telefone, status_assinatura, data_vencimento`,
-      [dias, req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Assinante não encontrado.' });
-    }
-
-    res.json({ message: `Assinatura renovada por ${dias} dias.`, usuario: result.rows[0] });
-  } catch (error) {
-    console.error('Erro ao renovar assinante:', error);
-    res.status(500).json({ error: 'Erro ao renovar assinante.' });
-  }
-});
-
+app.get('/api/ceo/dashboard', verificarToken, verificarCEO, async (req, res) => { try { const empresas = await pool.query(`SELECT p.id, p.nome, p.email, p.telefone, COALESCE(SUM(v.valor), 0) as faturamento_total FROM profissionais p LEFT JOIN vendas v ON p.id = v.profissional_id WHERE p.is_ceo = FALSE GROUP BY p.id ORDER BY p.data_cadastro DESC`); res.json({ totalEmpresas: empresas.rows.length, faturamentoGlobal: empresas.rows.reduce((acc, curr) => acc + parseFloat(curr.faturamento_total), 0), empresas: empresas.rows }); } catch (error) { res.status(500).json({ error: 'Erro CEO' }); } });
 app.delete('/api/ceo/usuarios/:id', verificarToken, verificarCEO, async (req, res) => { try { await pool.query('DELETE FROM profissionais WHERE id = $1 AND is_ceo = FALSE', [req.params.id]); res.json({ message: 'Excluído' }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/api/tickets', verificarToken, async (req, res) => { try { await pool.query('INSERT INTO tickets (profissional_id, mensagem) VALUES ($1, $2)', [req.profissionalId, req.body.mensagem]); res.status(201).json({ message: 'Ticket aberto' }); } catch(e) { res.status(500).json({ error: 'Erro ao abrir ticket' }); } });
 app.get('/api/ceo/tickets', verificarToken, verificarCEO, async (req, res) => { try { const result = await pool.query("SELECT t.*, p.nome as salao_nome, p.telefone as salao_whatsapp FROM tickets t JOIN profissionais p ON t.profissional_id = p.id WHERE t.status = 'aberto' ORDER BY t.data_criacao DESC"); res.json(result.rows); } catch(e) { res.status(500).json({ error: 'Erro buscar tickets' }); } });
@@ -500,17 +473,17 @@ app.get('/api/public/profissional/:id_profissional', async (req, res) => {
       [req.params.id_profissional]
     );
 
-    if (result.rows.length === 0) return res.json({});
-
-    const profissional = result.rows[0];
-    const horariosBase = String(profissional.horarios_trabalho || '')
+    const profissional = result.rows[0] || {};
+    const horariosBrutos = String(profissional.horarios_trabalho || '')
       .split(',')
       .map(h => h.trim())
       .filter(Boolean);
 
+    const expediente = prepararExpediente(horariosBrutos);
+
     res.json({
       ...profissional,
-      horarios_trabalho: gerarGradeAgenda(horariosBase, 15).join(',')
+      horarios_trabalho: expediente.horarios.join(',')
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro' });
@@ -531,13 +504,13 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
       [idProfissional]
     );
 
-    const horariosBase = (profissional.rows[0]?.horarios_trabalho || '')
+    const horariosBrutos = (profissional.rows[0]?.horarios_trabalho || '')
       .split(',')
       .map(h => h.trim())
-      .filter(Boolean)
-      .sort();
+      .filter(Boolean);
 
-    const horariosTrabalho = gerarGradeAgenda(horariosBase, 15);
+    const expediente = prepararExpediente(horariosBrutos);
+    const horariosTrabalho = expediente.horarios;
 
     if (horariosTrabalho.length === 0) {
       return res.json([]);
@@ -558,7 +531,7 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
       FROM agendamentos
       WHERE profissional_id = $1
       AND data_reserva = $2
-      AND status != 'cancelado'
+      AND COALESCE(status, 'pendente') != 'cancelado'
       `,
       [idProfissional, dataBR]
     );
@@ -583,10 +556,10 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
 
     const intervalosOcupados = montarIntervalosOcupados(agendamentosDoDia);
 
-    const hojeISO = new Date().toISOString().split('T')[0];
-    const agora = new Date();
-    const agoraMinutos = agora.getHours() * 60 + agora.getMinutes();
-    const dataSelecionadaISO = dataBRParaISO(req.query.data);
+    const dataHoraBrasil = obterPartesDataHoraBrasil();
+    const hojeISO = dataHoraBrasil.iso;
+    const agoraMinutos = dataHoraBrasil.minutos;
+    const dataSelecionadaISO = dataBRParaISO(dataBR);
 
     const ocupados = horariosTrabalho.filter(horario => {
       const inicio = horaParaMinutos(horario);
@@ -599,8 +572,8 @@ app.get('/api/public/horarios-ocupados/:id_profissional', async (req, res) => {
         return true;
       }
 
-      // Bloqueia se o serviço não couber na grade de atendimento de 15 minutos
-      if (!horarioCabeNaGrade(horario, duracaoMinutos, horariosTrabalho)) {
+      // Bloqueia se o serviço não couber no expediente real do salão
+      if (!horarioDentroDoExpediente(horario, duracaoMinutos, expediente)) {
         return true;
       }
 
@@ -647,10 +620,16 @@ app.post('/api/public/agendamentos', async (req, res) => {
     const horarioFim = minutosParaHora(inicioMinutos + duracaoMinutos);
     const funcionarioId = funcionario_id ? parseInt(funcionario_id, 10) : null;
 
-    const hojeISO = new Date().toISOString().split('T')[0];
+    const dataHoraBrasil = obterPartesDataHoraBrasil();
+    const hojeISO = dataHoraBrasil.iso;
+    const agoraMinutos = dataHoraBrasil.minutos;
     const dataSelecionadaISO = dataBRParaISO(dataBR);
     if (dataSelecionadaISO && dataSelecionadaISO < hojeISO) {
       return res.status(400).json({ error: 'Não é possível agendar em data passada.' });
+    }
+
+    if (dataSelecionadaISO === hojeISO && inicioMinutos <= agoraMinutos) {
+      return res.status(400).json({ error: 'Este horário já passou. Escolha um horário mais à frente.' });
     }
 
     const profissionalResult = await pool.query(
@@ -662,19 +641,15 @@ app.post('/api/public/agendamentos', async (req, res) => {
       return res.status(404).json({ error: 'Profissional não encontrado.' });
     }
 
-    const horariosTrabalho = String(profissionalResult.rows[0].horarios_trabalho || '')
+    const horariosBrutos = String(profissionalResult.rows[0].horarios_trabalho || '')
       .split(',')
       .map(h => h.trim())
-      .filter(Boolean)
-      .sort();
+      .filter(Boolean);
 
-    if (horariosTrabalho.length > 0) {
-      const passoAgenda = calcularPassoAgenda(horariosTrabalho);
-      const ultimoInicio = horaParaMinutos(horariosTrabalho[horariosTrabalho.length - 1]);
-      const limiteFimExpediente = ultimoInicio + passoAgenda;
-      if (!horariosTrabalho.includes(horario) || inicioMinutos + duracaoMinutos > limiteFimExpediente) {
-        return res.status(400).json({ error: 'O serviço não cabe neste horário de expediente.' });
-      }
+    const expediente = prepararExpediente(horariosBrutos);
+
+    if (expediente.horarios.length > 0 && !horarioDentroDoExpediente(horario, duracaoMinutos, expediente)) {
+      return res.status(400).json({ error: 'O serviço não cabe neste horário de expediente.' });
     }
 
     // Busca todos os agendamentos do dia.
@@ -691,7 +666,7 @@ app.post('/api/public/agendamentos', async (req, res) => {
       FROM agendamentos
       WHERE profissional_id = $1
       AND data_reserva = $2
-      AND status != 'cancelado'
+      AND COALESCE(status, 'pendente') != 'cancelado'
       `,
       [id_profissional, dataBR]
     );
