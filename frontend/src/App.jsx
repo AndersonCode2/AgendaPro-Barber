@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home, Calendar, DollarSign, Settings, PlusCircle, MessageCircle, X, Trash2, Plus, CheckCircle2, LogOut, Shield, Loader2, LifeBuoy, BellRing, Briefcase, UsersRound, UploadCloud, ArrowLeft, Star, TrendingUp, Lock, QrCode, ChevronRight, CreditCard } from 'lucide-react';
 import PaginaCliente from './PaginaCliente';
@@ -9,6 +9,7 @@ import ClienteCard from './components/ClienteCard';
 import ClienteHistoricoModal from './components/ClienteHistoricoModal';
 import ReagendarClienteModal from './components/ReagendarClienteModal';
 import NovoAgendamentoModal from './components/NovoAgendamentoModal';
+import NovoClienteModal from './components/NovoClienteModal';
 
 const API_URL = 'https://aurum-api-mdmq.onrender.com/api';
 const LOGO_AURUM = 'https://res.cloudinary.com/dnilha8sq/image/upload/f_auto,q_auto/ChatGPT_Image_2_de_abr._de_2026_11_18_14_jbqhl3';
@@ -187,6 +188,10 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const [servicos, setServicos] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [historicoCaixa, setHistoricoCaixa] = useState([]);
+  const hojeRelatorio = new Date().toISOString().slice(0, 10);
+  const [relatorioInicio, setRelatorioInicio] = useState(hojeRelatorio);
+  const [relatorioFim, setRelatorioFim] = useState(hojeRelatorio);
+  const [relatorio, setRelatorio] = useState(null);
   const [dadosCeo, setDadosCeo] = useState({ totalEmpresas: 0, faturamentoGlobal: 0, empresas: [] });
 
   const [ticketsSuporte, setTicketsSuporte] = useState([]);
@@ -213,40 +218,24 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const todosHorarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'];
   const opcoesDuracaoServico = [
     '15 min',
+    '20 min',
     '30 min',
+    '40 min',
     '45 min',
     '1h',
-    '1h 15min',
     '1h 30min',
-    '1h 45min',
     '2h',
-    '2h 15min',
     '2h 30min',
-    '2h 45min',
     '3h',
-    '3h 15min',
     '3h 30min',
-    '3h 45min',
     '4h',
-    '4h 15min',
-    '4h 30min',
-    '4h 45min',
     '5h',
-    '5h 15min',
-    '5h 30min',
-    '5h 45min',
-    '6h',
-    '6h 15min',
-    '6h 30min',
-    '6h 45min',
-    '7h',
-    '7h 15min',
-    '7h 30min',
-    '7h 45min',
-    '8h'
+    '6h'
   ];
   const [meusHorarios, setMeusHorarios] = useState([]);
   const [meuLogo, setMeuLogo] = useState(null);
+  const [politicaCancelamento, setPoliticaCancelamento] = useState('Cancelamentos devem ser avisados com antecedência. Em caso de atraso, o atendimento poderá ser reagendado conforme disponibilidade.');
+  const [mensagemAssinaturaVencida, setMensagemAssinaturaVencida] = useState('Sua assinatura AURUM venceu. Para continuar usando agenda, clientes e caixa, renove seu acesso pelo Pix ou fale com o suporte.');
   const [salvandoConfig, setSalvandoConfig] = useState(false);
 
   const linkBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
@@ -274,46 +263,6 @@ function PainelProfissional({ token, usuario, onLogout }) {
     return Number.isNaN(numero) ? 60 : numero;
   };
 
-  const horaParaMinutosLocal = (hora) => {
-    if (!hora || typeof hora !== 'string') return null;
-    const [h, m] = hora.trim().split(':').map(Number);
-    if (Number.isNaN(h) || Number.isNaN(m)) return null;
-    return h * 60 + m;
-  };
-
-  const minutosParaHoraLocal = (minutos) => {
-    const h = Math.floor(minutos / 60).toString().padStart(2, '0');
-    const m = (minutos % 60).toString().padStart(2, '0');
-    return `${h}:${m}`;
-  };
-
-  const gerarGrade15Minutos = (horariosBase = []) => {
-    const minutos = horariosBase
-      .map(horaParaMinutosLocal)
-      .filter(v => v !== null)
-      .sort((a, b) => a - b);
-
-    if (minutos.length === 0) return [];
-
-    let passoBase = 60;
-    for (let i = 1; i < minutos.length; i++) {
-      const diff = minutos[i] - minutos[i - 1];
-      if (diff > 0 && diff < passoBase) passoBase = diff;
-    }
-
-    const grade = new Set();
-    minutos.forEach(inicioBloco => {
-      const fimBloco = inicioBloco + passoBase;
-      for (let minuto = inicioBloco; minuto < fimBloco; minuto += 15) {
-        grade.add(minutosParaHoraLocal(minuto));
-      }
-    });
-
-    return Array.from(grade).sort();
-  };
-
-  const horariosAgenda15 = useMemo(() => gerarGrade15Minutos(meusHorarios), [meusHorarios]);
-
   const carregarTudo = useCallback(async () => {
     try {
       const resAssinatura = await fetch(`${API_URL}/assinatura`, { headers: headersAPI });
@@ -332,7 +281,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
       fetch(`${API_URL}/vendas`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setHistoricoCaixa(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/funcionarios`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setFuncionarios(Array.isArray(d) ? d : []));
       fetch(`${API_URL}/clientes`, { headers: headersAPI }).then(r=>r.ok?r.json():[]).then(d=>setListaClientes(Array.isArray(d) ? d : []));
-      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) { if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); if(d.logo_url) setMeuLogo(d.logo_url); } });
+      fetch(`${API_URL}/configuracoes`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) { if(d.horarios_trabalho) setMeusHorarios(d.horarios_trabalho.split(',')); if(d.logo_url) setMeuLogo(d.logo_url); if(d.politica_cancelamento) setPoliticaCancelamento(d.politica_cancelamento); if(d.mensagem_assinatura_vencida) setMensagemAssinaturaVencida(d.mensagem_assinatura_vencida); } });
 
       if (usuario.is_ceo) {
         fetch(`${API_URL}/ceo/dashboard`, { headers: headersAPI }).then(r=>r.ok?r.json():null).then(d=>{ if(d && !d.error) setDadosCeo(d); });
@@ -387,13 +336,13 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const salvarMeusHorarios = async (horaClicada) => {
     let novosHorarios = [...meusHorarios]; if (novosHorarios.includes(horaClicada)) novosHorarios = novosHorarios.filter(h => h !== horaClicada); else novosHorarios.push(horaClicada);
     novosHorarios.sort(); setMeusHorarios(novosHorarios); setSalvandoConfig(true);
-    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: novosHorarios.join(','), logo_url: meuLogo, politica_cancelamento: politicaCancelamento, mensagem_assinatura_vencida: mensagemAssinaturaVencida }) }); } catch (e) { console.error(e); alert("Erro ao salvar."); }
     setSalvandoConfig(false);
   };
 
   const salvarApenasLogo = async () => {
     setSalvandoConfig(true);
-    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo }) }); alert("Logo atualizada com sucesso!"); } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
+    try { await fetch(`${API_URL}/configuracoes`, { method: 'POST', headers: headersAPI, body: JSON.stringify({ horarios: meusHorarios.join(','), logo_url: meuLogo, politica_cancelamento: politicaCancelamento, mensagem_assinatura_vencida: mensagemAssinaturaVencida }) }); alert("Logo atualizada com sucesso!"); } catch (e) { console.error(e); alert("Erro ao salvar a logo."); }
     setSalvandoConfig(false);
   }
 
@@ -492,37 +441,27 @@ function PainelProfissional({ token, usuario, onLogout }) {
   const salvarNovoAgendamento = async ({
     cliente,
     servico,
-    servicosSelecionados: servicosDoAgendamento,
     funcionario,
     data,
     horario
   }) => {
-    const listaServicos = Array.isArray(servicosDoAgendamento) && servicosDoAgendamento.length > 0
-      ? servicosDoAgendamento
-      : servico
-        ? [servico]
-        : [];
-
-    if (!cliente || listaServicos.length === 0 || !data || !horario) {
+    if (!cliente || !servico || !data || !horario) {
       alert('Preencha cliente, serviço, data e horário do agendamento.');
       return;
     }
-
-    const valorTotalAgendamento = listaServicos.reduce((total, item) => total + Number(item.preco || 0), 0);
-    const duracaoTotalAgendamento = listaServicos.reduce((total, item) => total + obterDuracaoServicoLocal(item), 0);
 
     const payload = {
       id_profissional: usuario.id,
       nome: cliente.nome,
       whatsapp: cliente.whatsapp,
       nascimento: cliente.nascimento || '',
-      servico_nome: listaServicos.map(item => item.nome).join(', '),
+      servico_nome: servico.nome,
       data_reserva: data.split('-').reverse().join('/'),
       horario,
-      valor: valorTotalAgendamento,
+      valor: Number(servico.preco || 0),
       funcionario_id: funcionario?.id || null,
       funcionario_nome: funcionario?.nome || null,
-      duracao_minutos: duracaoTotalAgendamento || 60
+      duracao_minutos: obterDuracaoServicoLocal(servico)
     };
 
     const res = await fetch(`${API_URL}/public/agendamentos`, {
@@ -534,8 +473,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
     });
 
     if (!res.ok) {
-      const erro = await res.json().catch(() => null);
-      throw new Error(erro?.error || 'Erro ao criar agendamento.');
+      alert('Erro ao criar agendamento.');
+      return;
     }
 
     await carregarTudo();
@@ -543,40 +482,163 @@ function PainelProfissional({ token, usuario, onLogout }) {
     alert('Agendamento criado com sucesso!');
   };
 
-  const salvarClienteManualNoModal = async (cliente) => {
-    const res = await fetch(`${API_URL}/clientes`, {
-      method: 'POST',
-      headers: headersAPI,
-      body: JSON.stringify(cliente)
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(data?.error || 'Erro ao salvar cliente.');
-    }
-
-    await carregarTudo();
-    return data;
+  const telefoneParaWa = (telefone) => {
+    const limpo = String(telefone || '').replace(/\D/g, '');
+    if (!limpo) return '';
+    return limpo.startsWith('55') ? limpo : `55${limpo}`;
   };
 
-  const renovarEmpresa = async (id, nomeEmpresa) => {
-    if (!window.confirm(`Renovar a assinatura de "${nomeEmpresa}" por mais 30 dias?`)) return;
+  const abrirWhatsAppCliente = (telefone, texto) => {
+    const numero = telefoneParaWa(telefone);
+    if (!numero) {
+      alert('Cliente sem WhatsApp cadastrado.');
+      return;
+    }
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank');
+  };
 
-    const res = await fetch(`${API_URL}/ceo/usuarios/${id}/renovar`, {
+  const montarTextoAgendamento = (agendamento, tipo = 'confirmacao') => {
+    const nomeCliente = String(agendamento.cliente_nome || agendamento.nome || 'cliente').split(' ')[0];
+    const servico = agendamento.servico_nome || 'serviço agendado';
+    const data = agendamento.data_reserva || 'data combinada';
+    const horario = agendamento.horario || '';
+    const profissional = agendamento.funcionario_nome || usuario.nome;
+
+    if (tipo === 'lembrete') {
+      return `Olá, ${nomeCliente}! ✨
+
+Passando para lembrar do seu horário no ${usuario.nome}.
+
+📅 Data: ${data}
+⏰ Horário: ${horario}
+💎 Serviço: ${servico}
+👤 Profissional: ${profissional}
+
+Se precisar cancelar ou reagendar, avise com antecedência.
+
+${politicaCancelamento}`;
+    }
+
+    if (tipo === 'cancelamento') {
+      return `Olá, ${nomeCliente}.
+
+Seu agendamento no ${usuario.nome} foi cancelado.
+
+📅 Data: ${data}
+⏰ Horário: ${horario}
+💎 Serviço: ${servico}
+
+Quando quiser, podemos marcar um novo horário. ✨`;
+    }
+
+    return `Olá, ${nomeCliente}! ✨
+
+Seu agendamento foi confirmado no ${usuario.nome}.
+
+📅 Data: ${data}
+⏰ Horário: ${horario}
+💎 Serviço: ${servico}
+👤 Profissional: ${profissional}
+
+${politicaCancelamento}
+
+Esperamos você!`;
+  };
+
+  const enviarConfirmacaoAgendamento = (agendamento) => {
+    abrirWhatsAppCliente(agendamento.cliente_whatsapp, montarTextoAgendamento(agendamento, 'confirmacao'));
+  };
+
+  const enviarLembreteAgendamento = (agendamento) => {
+    abrirWhatsAppCliente(agendamento.cliente_whatsapp, montarTextoAgendamento(agendamento, 'lembrete'));
+  };
+
+  const cancelarAgendamento = async (agendamento) => {
+    if (!window.confirm(`Cancelar o agendamento de ${agendamento.cliente_nome || 'cliente'} às ${agendamento.horario}?`)) return;
+
+    const res = await fetch(`${API_URL}/agendamentos/${agendamento.id}/cancelar`, {
       method: 'POST',
-      headers: headersAPI,
-      body: JSON.stringify({ dias: 30 })
+      headers: headersAPI
     });
 
-    const data = await res.json().catch(() => null);
-
     if (!res.ok) {
-      alert(data?.error || 'Erro ao renovar assinatura.');
+      alert('Erro ao cancelar agendamento.');
       return;
     }
 
-    alert('Assinatura renovada por 30 dias.');
+    abrirWhatsAppCliente(agendamento.cliente_whatsapp, montarTextoAgendamento(agendamento, 'cancelamento'));
+    await carregarTudo();
+  };
+
+  const carregarRelatorio = async () => {
+    const res = await fetch(`${API_URL}/relatorios?inicio=${relatorioInicio}&fim=${relatorioFim}`, { headers: headersAPI });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Erro ao gerar relatório.');
+      return;
+    }
+    setRelatorio(data);
+  };
+
+  const baixarBackup = async () => {
+    const res = await fetch(`${API_URL}/backup`, { headers: headersAPI });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Erro ao gerar backup.');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-aurum-${usuario.id}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const salvarTextosProfissionais = async () => {
+    setSalvandoConfig(true);
+    try {
+      await fetch(`${API_URL}/configuracoes`, {
+        method: 'POST',
+        headers: headersAPI,
+        body: JSON.stringify({
+          horarios: meusHorarios.join(','),
+          logo_url: meuLogo,
+          politica_cancelamento: politicaCancelamento,
+          mensagem_assinatura_vencida: mensagemAssinaturaVencida
+        })
+      });
+      alert('Textos profissionais salvos com sucesso!');
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao salvar textos.');
+    }
+    setSalvandoConfig(false);
+  };
+
+  const renovarAssinanteAdmin = async (empresaId, dias = 30) => {
+    const res = await fetch(`${API_URL}/ceo/usuarios/${empresaId}/renovar`, {
+      method: 'POST',
+      headers: headersAPI,
+      body: JSON.stringify({ dias })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || 'Erro ao renovar assinatura.');
+    alert(data.message || 'Assinatura renovada.');
+    carregarTudo();
+  };
+
+  const bloquearAssinanteAdmin = async (empresaId, nome) => {
+    if (!window.confirm(`Bloquear o acesso de ${nome}?`)) return;
+    const res = await fetch(`${API_URL}/ceo/usuarios/${empresaId}/bloquear`, {
+      method: 'POST',
+      headers: headersAPI
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || 'Erro ao bloquear assinante.');
+    alert(data.message || 'Assinante bloqueado.');
     carregarTudo();
   };
 
@@ -594,7 +656,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
         <h2 className="text-3xl font-['Playfair_Display'] text-white mb-2 text-center">
           {bloqueado ? "Sua assinatura venceu." : "Renovar Assinatura"}
         </h2>
-        <p className="text-[#A8A8A8] text-sm mb-8 text-center max-w-md">Garanta seu acesso ininterrupto à plataforma AURUM Premium.</p>
+        <p className="text-[#A8A8A8] text-sm mb-8 text-center max-w-md">Garanta seu acesso ininterrupto à plataforma AURUM Premium. Se o Pix já foi pago e ainda não liberou, chame o suporte ou peça liberação manual no painel ADM.</p>
 
         {!qrCodeBase64 ? (
            <div className="w-full">
@@ -619,7 +681,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
            </div>
          )}
          {carregandoPix && <p className="text-[#D4AF37] text-xs flex items-center justify-center gap-2 mt-6"><Loader2 className="animate-spin" size={16}/> Gerando PIX seguro...</p>}
-         {bloqueado && <button onClick={onLogout} className="mt-8 text-[#6F6F6F] text-xs hover:text-red-500">Sair da Conta</button>}
+         {bloqueado && (<div className="w-full mt-6 space-y-3"><button onClick={() => window.open(`https://wa.me/5573998055316?text=${encodeURIComponent(`Olá, meu painel AURUM está vencido ou meu Pix ainda não liberou. ID da conta: ${usuario.id} - ${usuario.nome}`)}`, '_blank')} className="w-full bg-[#25D366] text-[#0D0D0D] py-4 rounded-2xl font-bold uppercase tracking-widest text-xs">Falar com suporte</button><button onClick={onLogout} className="w-full text-[#6F6F6F] text-xs hover:text-red-500">Sair da Conta</button></div>)}
       </div>
     </div>
   );
@@ -674,26 +736,16 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl px-5 py-4 min-w-45 flex-1">
-                  <p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-1">Link do cliente</p>
-                  <a
-                    href={linkCliente}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#D4AF37] text-xs font-bold hover:text-white transition-colors break-all"
-                  >
-                    Abrir agenda online
-                  </a>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setNovoAgendamentoAberto(true)}
-                  className="bg-[#D4AF37] text-[#0D0D0D] rounded-2xl px-6 py-4 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(212,175,55,0.25)] hover:scale-[1.02] transition-transform"
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl px-5 py-4 min-w-45">
+                <p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-1">Link do cliente</p>
+                <a
+                  href={linkCliente}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#D4AF37] text-xs font-bold hover:text-white transition-colors break-all"
                 >
-                  <Plus size={18} /> Novo
-                </button>
+                  Abrir agenda online
+                </a>
               </div>
             </div>
 
@@ -707,6 +759,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 onFinalizar={(agendamento) => {
                   concluirAtendimento(agendamento);
                 }}
+                onEnviarConfirmacao={enviarConfirmacaoAgendamento}
+                onEnviarLembrete={enviarLembreteAgendamento}
+                onCancelar={cancelarAgendamento}
               />
             </div>
 
@@ -716,6 +771,9 @@ function PainelProfissional({ token, usuario, onLogout }) {
                 agendamentos={agendamentos}
                 funcionarios={funcionarios}
                 onConcluir={concluirAtendimento}
+                onEnviarConfirmacao={enviarConfirmacaoAgendamento}
+                onEnviarLembrete={enviarLembreteAgendamento}
+                onCancelar={cancelarAgendamento}
               />
             </div>
 
@@ -730,6 +788,30 @@ function PainelProfissional({ token, usuario, onLogout }) {
         {telaAtiva === 'caixa' && (
           <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-normal font-['Playfair_Display'] text-white">Fluxo de Caixa</h2><span className="text-[#D4AF37] font-['Playfair_Display'] text-xl">R$ {ganhoDia.toFixed(2).replace('.', ',')} <span className="text-[10px] text-[#A8A8A8] font-['Inter'] font-light uppercase tracking-widest block text-right">Hoje</span></span></div>
+
+            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-5 space-y-4">
+              <div className="flex flex-col md:flex-row gap-3 md:items-end">
+                <div className="flex-1">
+                  <label className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-2 block">Início</label>
+                  <input type="date" value={relatorioInicio} onChange={(e) => setRelatorioInicio(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 rounded-2xl text-white outline-none focus:border-[#D4AF37]" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-2 block">Fim</label>
+                  <input type="date" value={relatorioFim} onChange={(e) => setRelatorioFim(e.target.value)} className="w-full bg-[#0D0D0D] border border-[#2A2A2A] p-4 rounded-2xl text-white outline-none focus:border-[#D4AF37]" />
+                </div>
+                <button onClick={carregarRelatorio} className="bg-[#D4AF37] text-[#0D0D0D] px-6 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs">Gerar relatório</button>
+              </div>
+
+              {relatorio && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3">
+                  <div className="bg-[#0D0D0D] p-4 rounded-2xl border border-[#2A2A2A]"><p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest">Faturamento</p><p className="text-[#D4AF37] text-xl font-bold mt-1">R$ {Number(relatorio.resumo?.faturamento || 0).toFixed(2).replace('.', ',')}</p></div>
+                  <div className="bg-[#0D0D0D] p-4 rounded-2xl border border-[#2A2A2A]"><p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest">Líquido</p><p className="text-white text-xl font-bold mt-1">R$ {Number(relatorio.resumo?.liquido || 0).toFixed(2).replace('.', ',')}</p></div>
+                  <div className="bg-[#0D0D0D] p-4 rounded-2xl border border-[#2A2A2A]"><p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest">Comissões</p><p className="text-red-300 text-xl font-bold mt-1">R$ {Number(relatorio.resumo?.comissoes || 0).toFixed(2).replace('.', ',')}</p></div>
+                  <div className="bg-[#0D0D0D] p-4 rounded-2xl border border-[#2A2A2A]"><p className="text-[#8A8A8A] text-[10px] uppercase tracking-widest">Atendimentos</p><p className="text-white text-xl font-bold mt-1">{relatorio.resumo?.atendimentos || 0}</p></div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-3">
               {historicoCaixa.length === 0 ? <p className="text-center text-[#6F6F6F] py-8 font-light border border-dashed border-[#2A2A2A] rounded-3xl">Nenhuma movimentação.</p> : historicoCaixa.map((item) => {
                   const dataObj = new Date(item.data_venda);
@@ -830,6 +912,28 @@ function PainelProfissional({ token, usuario, onLogout }) {
         
         {telaAtiva === 'config' && (
           <div className="space-y-6 animate-fade-in">
+            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-3xl p-6 space-y-5">
+              <div>
+                <p className="text-[#D4AF37] text-[10px] uppercase tracking-[0.25em] font-bold mb-2">Configuração Profissional</p>
+                <h2 className="text-2xl font-['Playfair_Display'] text-white">Textos, política e backup</h2>
+                <p className="text-[#8A8A8A] text-sm mt-2">Esses textos entram nas mensagens de confirmação, lembrete e na tela de acesso vencido.</p>
+              </div>
+
+              <div>
+                <label className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-2 block">Política de cancelamento</label>
+                <textarea value={politicaCancelamento} onChange={(e) => setPoliticaCancelamento(e.target.value)} rows="4" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-2xl p-4 text-white text-sm outline-none focus:border-[#D4AF37] resize-none" />
+              </div>
+
+              <div>
+                <label className="text-[#8A8A8A] text-[10px] uppercase tracking-widest mb-2 block">Mensagem de assinatura vencida</label>
+                <textarea value={mensagemAssinaturaVencida} onChange={(e) => setMensagemAssinaturaVencida(e.target.value)} rows="3" className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-2xl p-4 text-white text-sm outline-none focus:border-[#D4AF37] resize-none" />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <button onClick={salvarTextosProfissionais} disabled={salvandoConfig} className="bg-[#D4AF37] text-[#0D0D0D] p-4 rounded-2xl font-bold uppercase tracking-widest text-xs disabled:opacity-50">Salvar textos</button>
+                <button onClick={baixarBackup} className="bg-[#0D0D0D] border border-[#D4AF37]/40 text-[#D4AF37] p-4 rounded-2xl font-bold uppercase tracking-widest text-xs">Baixar backup JSON</button>
+              </div>
+            </div>
             
             {!usuario.is_ceo && (
               <div className="mb-10 pb-8 border-b border-[#2A2A2A]">
@@ -940,26 +1044,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
             
             <div className="mt-10"><h3 className="text-xl font-normal font-['Playfair_Display'] text-white mb-6">Gestão de Assinantes</h3><div className="space-y-4">
                 {dadosCeo.empresas?.map((empresa) => (
-                    <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex flex-col lg:flex-row lg:justify-between lg:items-center gap-5">
-                      <div className="flex-1">
-                        <p className="text-white font-medium text-lg">{empresa.nome}</p>
-                        <div className="text-[#A8A8A8] text-xs mt-3 flex flex-col gap-2">
-                          <span className="flex items-center gap-2"><span className="bg-[#2A2A2A] text-white px-2 py-0.5 rounded text-[10px] font-bold">ID: {empresa.id}</span> {empresa.telefone}</span>
-                          <span className="text-[#6F6F6F]">✉️ {empresa.email}</span>
-                          <span className="text-[#6F6F6F]">Validade: {empresa.data_vencimento ? new Date(empresa.data_vencimento).toLocaleDateString('pt-BR') : 'Não definida'}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-left lg:text-right">
-                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase tracking-widest block">Faturamento</span>
-                        <span className="text-lg text-[#D4AF37] font-['Playfair_Display'] block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span>
-                      </div>
-
-                      <div className="flex gap-3 w-full lg:w-auto">
-                        <button onClick={() => renovarEmpresa(empresa.id, empresa.nome)} className="flex-1 lg:flex-none px-4 py-3 bg-[#D4AF37] text-[#0D0D0D] rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#E6C76B] transition-all flex items-center justify-center gap-2"><CreditCard size={16} /> Renovar +30 dias</button>
-                        <button onClick={() => excluirEmpresa(empresa.id, empresa.nome)} className="p-4 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-xl hover:text-red-500 transition-all"><Trash2 size={18} /></button>
-                      </div>
-                    </div>
+                    <div key={empresa.id} className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl flex justify-between items-center"><div className="flex-1"><p className="text-white font-medium text-lg">{empresa.nome}</p><div className="text-[#A8A8A8] text-xs mt-3 flex flex-col gap-2"><span className="flex items-center gap-2"><span className="bg-[#2A2A2A] text-white px-2 py-0.5 rounded text-[10px] font-bold">ID: {empresa.id}</span> {empresa.telefone}</span><span className="text-[#6F6F6F]">✉️ {empresa.email}</span></div></div><div className="text-right mr-5 space-y-1"><span className="text-[10px] text-[#6F6F6F] font-bold uppercase tracking-widest block">Faturamento</span><span className="text-lg text-[#D4AF37] font-['Playfair_Display'] block mt-1">R$ {parseFloat(empresa.faturamento_total).toFixed(2).replace('.', ',')}</span><span className={`text-[10px] font-bold uppercase tracking-widest block ${Number(empresa.dias_restantes) <= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{Number(empresa.dias_restantes) <= 0 ? 'Vencido' : `${empresa.dias_restantes} dias`}</span></div><div className="flex flex-col gap-2 mr-3"><button onClick={() => renovarAssinanteAdmin(empresa.id, 30)} className="px-3 py-2 rounded-xl bg-[#D4AF37] text-[#0D0D0D] text-[10px] font-bold uppercase tracking-widest">+30 dias</button><button onClick={() => bloquearAssinanteAdmin(empresa.id, empresa.nome)} className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-bold uppercase tracking-widest">Bloquear</button></div><button onClick={() => excluirEmpresa(empresa.id, empresa.nome)} className="p-4 bg-[#0D0D0D] border border-[#2A2A2A] text-[#6F6F6F] rounded-xl hover:text-red-500 transition-all"><Trash2 size={18} /></button></div>
                 ))}
               </div></div>
 
@@ -1024,9 +1109,8 @@ function PainelProfissional({ token, usuario, onLogout }) {
         clientes={listaClientes}
         funcionarios={funcionarios}
         servicos={servicos}
-        horarios={horariosAgenda15}
+        horarios={meusHorarios}
         onSalvar={salvarNovoAgendamento}
-        onSalvarCliente={salvarClienteManualNoModal}
       />
 
       <ReagendarClienteModal
@@ -1036,7 +1120,7 @@ function PainelProfissional({ token, usuario, onLogout }) {
         funcionarios={funcionarios}
         servicos={servicos}
         agendamentos={agendamentos}
-        horariosBase={horariosAgenda15}
+        horariosBase={meusHorarios}
         onConfirmar={confirmarReagendamentoCliente}
       />
 

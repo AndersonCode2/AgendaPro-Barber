@@ -4,13 +4,19 @@ import {
   User2,
   CheckCircle2,
   Plus,
-  Scissors
+  Scissors,
+  MessageCircle,
+  BellRing,
+  XCircle
 } from 'lucide-react';
 
 export default function AgendaMobile({
   agendamentos = [],
   onNovoAgendamento,
-  onFinalizar
+  onFinalizar,
+  onEnviarConfirmacao,
+  onEnviarLembrete,
+  onCancelar
 }) {
 
   const agrupados = agendamentos.reduce((acc, agendamento) => {
@@ -172,19 +178,27 @@ export default function AgendaMobile({
                     </div>
 
                     {/* FOOTER */}
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-4">
 
-                      <div className="text-[#D4AF37] text-3xl font-['Playfair_Display']">
-                        R$ {Number(agendamento.valor || 0).toFixed(2)}
+                        <div className="text-[#D4AF37] text-3xl font-['Playfair_Display']">
+                          R$ {Number(agendamento.valor || 0).toFixed(2)}
+                        </div>
+
+                        <button
+                          onClick={() => onFinalizar(agendamento)}
+                          className="bg-[#D4AF37] text-[#0D0D0D] rounded-2xl px-6 py-4 font-bold tracking-widest uppercase"
+                        >
+                          Finalizar
+                        </button>
+
                       </div>
 
-                      <button
-                        onClick={() => onFinalizar(agendamento)}
-                        className="bg-[#D4AF37] text-[#0D0D0D] rounded-2xl px-6 py-4 font-bold tracking-widest uppercase"
-                      >
-                        Finalizar
-                      </button>
-
+                      <div className="grid grid-cols-3 gap-2">
+                        <button onClick={() => onEnviarConfirmacao?.(agendamento)} className="bg-[#0D0D0D] border border-[#2A2A2A] text-[#D4AF37] rounded-xl py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1"><MessageCircle size={13}/>Confirmar</button>
+                        <button onClick={() => onEnviarLembrete?.(agendamento)} className="bg-[#0D0D0D] border border-[#2A2A2A] text-white rounded-xl py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1"><BellRing size={13}/>Lembrete</button>
+                        <button onClick={() => onCancelar?.(agendamento)} className="bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1"><XCircle size={13}/>Cancelar</button>
+                      </div>
                     </div>
 
                   </div>
